@@ -3,7 +3,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount, watch, provide } from 'vue'
+import { ref, onMounted, onBeforeUnmount, watch, inject } from 'vue'
 import mapboxgl from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
 import { useMapStore } from '@/stores'
@@ -14,8 +14,14 @@ const mapStore = useMapStore()
 let syncTimer: number | null = null
 let isApplyingStoreUpdate = false
 let stopStoreWatch: (() => void) | null = null
-const mapRef = ref<mapboxgl.Map | null>(null)
-provide('mapInstance', mapRef)
+
+// 从父组件注入 mapRef
+type MapRef = { value: mapboxgl.Map | null }
+const injected = inject<MapRef>('mapInstance')
+if (!injected) {
+  throw new Error('mapInstance not provided')
+}
+const mapRef = injected
 
 onMounted(() => {
   if (!mapContainer.value) return
@@ -32,6 +38,7 @@ onMounted(() => {
     zoom: mapStore.zoom,
     antialias: true,
   })
+  // 将地图实例保存到 mapRef（供兄弟组件使用）
   mapRef.value = map
 
   // 添加导航控件（缩放和旋转）

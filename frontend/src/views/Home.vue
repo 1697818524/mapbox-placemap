@@ -22,10 +22,16 @@
 </template>
 
 <script setup lang="ts">
+import { ref, provide } from 'vue'
 import Navbar from '@/components/Navbar.vue'
 import MapInfo from '@/components/MapInfo.vue'
 import MapDisplay from '@/components/MapDisplay.vue'
 import MapStyle from '@/components/MapStyle.vue'
+import type mapboxgl from 'mapbox-gl'
+
+// 创建地图实例的引用，提供给子组件使用
+const mapRef = ref<{ value: mapboxgl.Map | null }>({ value: null })
+provide('mapInstance', mapRef)
 </script>
 
 <style scoped>
