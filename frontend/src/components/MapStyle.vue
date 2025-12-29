@@ -1,16 +1,16 @@
 <template>
   <div class="map-style">
     <div class="style-header">
-      <h3>地图样式配置</h3>
+      <h3>{{ t('mapStyle.title') }}</h3>
       <div class="header-actions">
-        <el-button size="small" @click="resetAllColors">重置所有</el-button>
+        <el-button size="small" @click="resetAllColors">{{ t('mapStyle.resetAll') }}</el-button>
       </div>
     </div>
 
     <el-scrollbar class="style-content">
       <el-collapse v-model="activeCategories" class="category-section">
         <!-- 水体类别 -->
-        <el-collapse-item name="water" title="💧 水体">
+        <el-collapse-item name="water" :title="t('mapStyle.water')">
           <div class="layer-list">
             <div
               v-for="layer in waterLayers"
@@ -18,8 +18,7 @@
               class="layer-item"
             >
               <div class="layer-info">
-                <span class="layer-name">{{ layer.name }}</span>
-                <span class="layer-id">{{ layer.id }}</span>
+                <span class="layer-name">{{ getLayerName(layer.nameKey) }}</span>
               </div>
               <div class="color-control">
                 <el-color-picker
@@ -32,7 +31,7 @@
                   text
                   @click="resetLayerColor(layer.id, layer.defaultColor, layer.paintProperty)"
                 >
-                  重置
+                  {{ t('mapStyle.reset') }}
                 </el-button>
               </div>
             </div>
@@ -40,7 +39,7 @@
         </el-collapse-item>
 
         <!-- 道路类别 -->
-        <el-collapse-item name="roads" title="🛣️ 道路">
+        <el-collapse-item name="roads" :title="t('mapStyle.roads')">
           <div class="layer-list">
             <div
               v-for="layer in roadLayers"
@@ -48,8 +47,7 @@
               class="layer-item"
             >
               <div class="layer-info">
-                <span class="layer-name">{{ layer.name }}</span>
-                <span class="layer-id">{{ layer.id }}</span>
+                <span class="layer-name">{{ getLayerName(layer.nameKey) }}</span>
               </div>
               <div class="color-control">
                 <el-color-picker
@@ -62,7 +60,7 @@
                   text
                   @click="resetLayerColor(layer.id, layer.defaultColor, layer.paintProperty)"
                 >
-                  重置
+                  {{ t('mapStyle.reset') }}
                 </el-button>
               </div>
             </div>
@@ -70,7 +68,7 @@
         </el-collapse-item>
 
         <!-- 建筑类别 -->
-        <el-collapse-item name="buildings" title="🏢 建筑">
+        <el-collapse-item name="buildings" :title="t('mapStyle.buildings')">
           <div class="layer-list">
             <div
               v-for="layer in buildingLayers"
@@ -78,8 +76,7 @@
               class="layer-item"
             >
               <div class="layer-info">
-                <span class="layer-name">{{ layer.name }}</span>
-                <span class="layer-id">{{ layer.id }}</span>
+                <span class="layer-name">{{ getLayerName(layer.nameKey) }}</span>
               </div>
               <div class="color-control">
                 <el-color-picker
@@ -92,7 +89,7 @@
                   text
                   @click="resetLayerColor(layer.id, layer.defaultColor, layer.paintProperty)"
                 >
-                  重置
+                  {{ t('mapStyle.reset') }}
                 </el-button>
               </div>
             </div>
@@ -100,7 +97,7 @@
         </el-collapse-item>
 
         <!-- 绿地/土地类别 -->
-        <el-collapse-item name="green" title="🌳 绿地/土地">
+        <el-collapse-item name="green" :title="t('mapStyle.green')">
           <div class="layer-list">
             <div
               v-for="layer in greenLayers"
@@ -108,8 +105,7 @@
               class="layer-item"
             >
               <div class="layer-info">
-                <span class="layer-name">{{ layer.name }}</span>
-                <span class="layer-id">{{ layer.id }}</span>
+                <span class="layer-name">{{ getLayerName(layer.nameKey) }}</span>
               </div>
               <div class="color-control">
                 <el-color-picker
@@ -122,7 +118,7 @@
                   text
                   @click="resetLayerColor(layer.id, layer.defaultColor, layer.paintProperty)"
                 >
-                  重置
+                  {{ t('mapStyle.reset') }}
                 </el-button>
               </div>
             </div>
@@ -130,7 +126,7 @@
         </el-collapse-item>
 
         <!-- 注记类别 -->
-        <el-collapse-item name="labels" title="📝 注记">
+        <el-collapse-item name="labels" :title="t('mapStyle.labels')">
           <div class="layer-list">
             <div
               v-for="layer in labelLayers"
@@ -138,8 +134,7 @@
               class="layer-item"
             >
               <div class="layer-info">
-                <span class="layer-name">{{ layer.name }}</span>
-                <span class="layer-id">{{ layer.id }}</span>
+                <span class="layer-name">{{ getLayerName(layer.nameKey) }}</span>
               </div>
               <div class="color-control">
                 <el-color-picker
@@ -152,7 +147,7 @@
                   text
                   @click="resetLayerColor(layer.id, layer.defaultColor, layer.paintProperty)"
                 >
-                  重置
+                  {{ t('mapStyle.reset') }}
                 </el-button>
               </div>
             </div>
@@ -166,8 +161,11 @@
 <script setup lang="ts">
 import { ref, reactive, watch, onMounted, inject } from 'vue'
 import { ElMessage } from 'element-plus'
+import { useI18n } from 'vue-i18n'
 import type mapboxgl from 'mapbox-gl'
 import { useColorSchemeStore, type ColorScheme, type ColorSchemeItem } from '@/stores'
+
+const { t } = useI18n()
 
 type MapRef = { value: mapboxgl.Map | null }
 
@@ -216,50 +214,55 @@ const predefineColors = [
 // 图层配置接口
 interface LayerConfig {
   id: string
-  name: string
+  nameKey: string  // 翻译键，而不是直接的中文名称
   paintProperty: 'line-color' | 'fill-color' | 'fill-outline-color' | 'text-color' | 'icon-color'
   defaultColor?: string
+}
+
+// 获取图层显示名称（国际化）
+const getLayerName = (nameKey: string): string => {
+  return t(`mapStyle.layers.${nameKey}`)
 }
 
 // 颜色方案类型从 store 导入
 
 // 水体图层配置
 const waterLayers: LayerConfig[] = [
-  { id: 'water', name: '水体', paintProperty: 'fill-color' },
-  { id: 'waterway', name: '水道', paintProperty: 'line-color' },
+  { id: 'water', nameKey: 'water', paintProperty: 'fill-color' },
+  { id: 'waterway', nameKey: 'waterway', paintProperty: 'line-color' },
 ]
 
 // 道路图层配置
 const roadLayers: LayerConfig[] = [
-  { id: 'road-pedestrian', name: '人行道', paintProperty: 'line-color' },
-  { id: 'road-path', name: '小径', paintProperty: 'line-color' },
-  { id: 'road-minor', name: '次要道路', paintProperty: 'line-color' },
-  { id: 'road-street', name: '街道', paintProperty: 'line-color' },
-  { id: 'road-secondary-tertiary', name: '二级/三级道路', paintProperty: 'line-color' },
-  { id: 'road-primary', name: '主要道路', paintProperty: 'line-color' },
-  { id: 'road-motorway-trunk', name: '高速公路', paintProperty: 'line-color' },
+  { id: 'road-pedestrian', nameKey: 'roadPedestrian', paintProperty: 'line-color' },
+  { id: 'road-path', nameKey: 'roadPath', paintProperty: 'line-color' },
+  { id: 'road-minor', nameKey: 'roadMinor', paintProperty: 'line-color' },
+  { id: 'road-street', nameKey: 'roadStreet', paintProperty: 'line-color' },
+  { id: 'road-secondary-tertiary', nameKey: 'roadSecondaryTertiary', paintProperty: 'line-color' },
+  { id: 'road-primary', nameKey: 'roadPrimary', paintProperty: 'line-color' },
+  { id: 'road-motorway-trunk', nameKey: 'roadMotorwayTrunk', paintProperty: 'line-color' },
 ]
 
 // 建筑图层配置
 const buildingLayers: LayerConfig[] = [
-  { id: 'building', name: '建筑物', paintProperty: 'fill-color' },
+  { id: 'building', nameKey: 'building', paintProperty: 'fill-color' },
 ]
 
 // 绿地/土地图层配置
 const greenLayers: LayerConfig[] = [
-  { id: 'landcover', name: '土地覆盖', paintProperty: 'fill-color' },
-  { id: 'national-park', name: '国家公园', paintProperty: 'fill-color' },
-  { id: 'landuse', name: '土地利用', paintProperty: 'fill-color' },
+  { id: 'landcover', nameKey: 'landcover', paintProperty: 'fill-color' },
+  { id: 'national-park', nameKey: 'nationalPark', paintProperty: 'fill-color' },
+  { id: 'landuse', nameKey: 'landuse', paintProperty: 'fill-color' },
 ]
 
 // 注记图层配置（使用 icon-color 而非 text-color）
 const labelLayers: LayerConfig[] = [
-  { id: 'waterway-label', name: '水道标签', paintProperty: 'icon-color' },
-  { id: 'water-line-label', name: '水体线条标签', paintProperty: 'icon-color' },
-  { id: 'water-point-label', name: '水体点标签', paintProperty: 'icon-color' },
-  { id: 'road-label', name: '道路标签', paintProperty: 'icon-color' },
-  { id: 'place-label', name: '地点标签', paintProperty: 'icon-color' },
-  { id: 'poi-label', name: '兴趣点标签', paintProperty: 'icon-color' },
+  { id: 'waterway-label', nameKey: 'waterwayLabel', paintProperty: 'icon-color' },
+  { id: 'water-line-label', nameKey: 'waterLineLabel', paintProperty: 'icon-color' },
+  { id: 'water-point-label', nameKey: 'waterPointLabel', paintProperty: 'icon-color' },
+  { id: 'road-label', nameKey: 'roadLabel', paintProperty: 'icon-color' },
+  { id: 'place-label', nameKey: 'placeLabel', paintProperty: 'icon-color' },
+  { id: 'poi-label', nameKey: 'poiLabel', paintProperty: 'icon-color' },
 ]
 
 // 列出所有图层（用于调试）
@@ -1000,13 +1003,6 @@ onMounted(() => {
   font-size: 14px;
   font-weight: 500;
   color: #303133;
-  margin-bottom: 4px;
-}
-
-.layer-id {
-  font-size: 11px;
-  color: #909399;
-  font-family: 'Courier New', monospace;
 }
 
 .color-control {
