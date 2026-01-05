@@ -19,7 +19,7 @@
           v-for="(result, index) in searchResults"
           :key="index"
           class="search-result-item"
-          @click="selectLocation(result)"
+          @click="handleSelectLocation(result)"
         >
           <div class="result-name">{{ result.place_name }}</div>
           <div class="result-address">{{ result.text }}</div>
@@ -28,7 +28,9 @@
     </div>
     <div v-if="selectedLocation" class="location-info">
       <h3>{{ t('mapInfo.selectedLocation') }}</h3>
-      <p><strong>{{ t('mapInfo.name') }}:</strong> {{ selectedLocation.place_name }}</p>
+      <p>
+        <strong>{{ t('mapInfo.name') }}:</strong> {{ selectedLocation.place_name }}
+      </p>
       <p>
         <strong>{{ t('mapInfo.coordinates') }}:</strong>
         {{ selectedLocation.center[0].toFixed(4) }}, {{ selectedLocation.center[1].toFixed(4) }}
@@ -38,10 +40,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onBeforeUnmount } from 'vue'
+import { watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Search } from '@element-plus/icons-vue'
 import { useMapStore } from '@/stores'
+import { useGeocoding, useDebounce } from '@/composables'
+import { API_CONFIG } from '@/config'
+import type { GeocodeFeature } from '@/types/api'
 
 const { t } = useI18n()
 const mapStore = useMapStore()
@@ -51,62 +56,29 @@ const emit = defineEmits<{
   'search-enter': []
 }>()
 
-export type GeocodeFeature = {
-  place_name: string
-  text: string
-  center: [number, number]
-}
+// 使用地理编码组合式函数
+const { searchQuery, searchResults, selectedLocation, isSearching, doSearch, selectLocation } =
+  useGeocoding()
 
-const searchQuery = ref('')
-const searchResults = ref<GeocodeFeature[]>([])
-const selectedLocation = ref<GeocodeFeature | null>(null)
-const searchTimeout = ref<ReturnType<typeof setTimeout> | null>(null)
-const isSearching = ref(false)
-
-// Mapbox Geocoding API 配置
-const MAPBOX_TOKEN = 'pk.eyJ1IjoiZGYweGV3YyIsImEiOiJjbTNoamh0NnMwZzZ6MnRwcXJkbWUxM2syIn0.eE5V7j0-uNb4WiwG2hXs0w'
-const GEOCODING_API_URL = 'https://api.mapbox.com/geocoding/v5/mapbox.places'
-
-const doSearch = async () => {
-  isSearching.value = true
-  const controller = new AbortController()
-  const timeoutId = setTimeout(() => controller.abort(), 5000)
-  try {
-    const response = await fetch(
-      `${GEOCODING_API_URL}/${encodeURIComponent(searchQuery.value)}.json?access_token=${MAPBOX_TOKEN}&limit=5`,
-      { signal: controller.signal }
-    )
-    clearTimeout(timeoutId)
-    const data = await response.json()
-    searchResults.value = data.features || []
-  } catch (error) {
-    if (error instanceof Error && error.name === 'AbortError') {
-      console.error('搜索超时')
-    } else {
-      console.error('搜索错误:', error)
-    }
-    searchResults.value = []
-  } finally {
-    isSearching.value = false
-  }
-}
+// 使用防抖函数
+const { debouncedFn: debouncedSearch, cancel: cancelSearch } = useDebounce(
+  doSearch,
+  API_CONFIG.DEBOUNCE_DELAY
+)
 
 // 搜索处理函数，带防抖
 const handleSearch = () => {
-  if (searchTimeout.value) clearTimeout(searchTimeout.value)
-
-  if (!searchQuery.value || searchQuery.value.trim().length < 2) {
+  if (!searchQuery.value || searchQuery.value.trim().length < API_CONFIG.SEARCH_MIN_LENGTH) {
     searchResults.value = []
     return
   }
-
-  searchTimeout.value = setTimeout(doSearch, 200)
+  debouncedSearch()
 }
 
 // 回车搜索
 const handleSearchEnter = () => {
-  if (searchTimeout.value) clearTimeout(searchTimeout.value)
-  if (!searchQuery.value || searchQuery.value.trim().length < 2) {
+  cancelSearch()
+  if (!searchQuery.value || searchQuery.value.trim().length < API_CONFIG.SEARCH_MIN_LENGTH) {
     searchResults.value = []
     return
   }
@@ -115,25 +87,18 @@ const handleSearchEnter = () => {
   emit('search-enter')
 }
 
-// 选择位置
-const selectLocation = (location: GeocodeFeature) => {
-  selectedLocation.value = location
-  searchResults.value = []
-  searchQuery.value = location.place_name
-
+// 选择位置并跳转地图
+const handleSelectLocation = (location: GeocodeFeature) => {
+  selectLocation(location)
   const [lng, lat] = location.center
   mapStore.setView([lng, lat], 14)
 }
 
 // 监听搜索框清空
-watch(searchQuery, (newVal) => {
+watch(searchQuery, newVal => {
   if (!newVal) {
     searchResults.value = []
   }
-})
-
-onBeforeUnmount(() => {
-  if (searchTimeout.value) clearTimeout(searchTimeout.value)
 })
 
 // 暴露给父组件的方法和属性
@@ -224,4 +189,3 @@ defineExpose({
   color: #303133;
 }
 </style>
-

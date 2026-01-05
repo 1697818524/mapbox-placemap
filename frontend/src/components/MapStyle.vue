@@ -12,11 +12,7 @@
         <!-- 水体类别 -->
         <el-collapse-item name="water" :title="t('mapStyle.water')">
           <div class="layer-list">
-            <div
-              v-for="layer in waterLayers"
-              :key="layer.id"
-              class="layer-item"
-            >
+            <div v-for="layer in waterLayers" :key="layer.id" class="layer-item">
               <div class="layer-info">
                 <span class="layer-name">{{ getLayerName(layer.nameKey) }}</span>
               </div>
@@ -24,7 +20,7 @@
                 <el-color-picker
                   v-model="layerColors[layer.id]"
                   :predefine="predefineColors"
-                  @change="(color) => updateLayerColor(layer.id, color, layer.paintProperty)"
+                  @change="color => updateLayerColor(layer.id, color, layer.paintProperty)"
                 />
                 <el-button
                   size="small"
@@ -41,11 +37,7 @@
         <!-- 道路类别 -->
         <el-collapse-item name="roads" :title="t('mapStyle.roads')">
           <div class="layer-list">
-            <div
-              v-for="layer in roadLayers"
-              :key="layer.id"
-              class="layer-item"
-            >
+            <div v-for="layer in roadLayers" :key="layer.id" class="layer-item">
               <div class="layer-info">
                 <span class="layer-name">{{ getLayerName(layer.nameKey) }}</span>
               </div>
@@ -53,7 +45,7 @@
                 <el-color-picker
                   v-model="layerColors[layer.id]"
                   :predefine="predefineColors"
-                  @change="(color) => updateLayerColor(layer.id, color, layer.paintProperty)"
+                  @change="color => updateLayerColor(layer.id, color, layer.paintProperty)"
                 />
                 <el-button
                   size="small"
@@ -70,11 +62,7 @@
         <!-- 建筑类别 -->
         <el-collapse-item name="buildings" :title="t('mapStyle.buildings')">
           <div class="layer-list">
-            <div
-              v-for="layer in buildingLayers"
-              :key="layer.id"
-              class="layer-item"
-            >
+            <div v-for="layer in buildingLayers" :key="layer.id" class="layer-item">
               <div class="layer-info">
                 <span class="layer-name">{{ getLayerName(layer.nameKey) }}</span>
               </div>
@@ -82,7 +70,7 @@
                 <el-color-picker
                   v-model="layerColors[layer.id]"
                   :predefine="predefineColors"
-                  @change="(color) => updateLayerColor(layer.id, color, layer.paintProperty)"
+                  @change="color => updateLayerColor(layer.id, color, layer.paintProperty)"
                 />
                 <el-button
                   size="small"
@@ -99,11 +87,7 @@
         <!-- 绿地/土地类别 -->
         <el-collapse-item name="green" :title="t('mapStyle.green')">
           <div class="layer-list">
-            <div
-              v-for="layer in greenLayers"
-              :key="layer.id"
-              class="layer-item"
-            >
+            <div v-for="layer in greenLayers" :key="layer.id" class="layer-item">
               <div class="layer-info">
                 <span class="layer-name">{{ getLayerName(layer.nameKey) }}</span>
               </div>
@@ -111,7 +95,7 @@
                 <el-color-picker
                   v-model="layerColors[layer.id]"
                   :predefine="predefineColors"
-                  @change="(color) => updateLayerColor(layer.id, color, layer.paintProperty)"
+                  @change="color => updateLayerColor(layer.id, color, layer.paintProperty)"
                 />
                 <el-button
                   size="small"
@@ -128,11 +112,7 @@
         <!-- 注记类别 -->
         <el-collapse-item name="labels" :title="t('mapStyle.labels')">
           <div class="layer-list">
-            <div
-              v-for="layer in labelLayers"
-              :key="layer.id"
-              class="layer-item"
-            >
+            <div v-for="layer in labelLayers" :key="layer.id" class="layer-item">
               <div class="layer-info">
                 <span class="layer-name">{{ getLayerName(layer.nameKey) }}</span>
               </div>
@@ -140,7 +120,7 @@
                 <el-color-picker
                   v-model="layerColors[layer.id]"
                   :predefine="predefineColors"
-                  @change="(color) => updateLayerColor(layer.id, color, layer.paintProperty)"
+                  @change="color => updateLayerColor(layer.id, color, layer.paintProperty)"
                 />
                 <el-button
                   size="small"
@@ -214,7 +194,7 @@ const predefineColors = [
 // 图层配置接口
 interface LayerConfig {
   id: string
-  nameKey: string  // 翻译键，而不是直接的中文名称
+  nameKey: string // 翻译键，而不是直接的中文名称
   paintProperty: 'line-color' | 'fill-color' | 'fill-outline-color' | 'text-color' | 'icon-color'
   defaultColor?: string
 }
@@ -273,10 +253,10 @@ const listAllLayers = () => {
     console.log('地图未加载')
     return
   }
-  
+
   console.log('地图已加载，检查样式状态...')
   console.log('isStyleLoaded:', map.isStyleLoaded())
-  
+
   if (!map.isStyleLoaded()) {
     console.log('样式未加载，等待...')
     map.once('styledata', () => {
@@ -285,26 +265,24 @@ const listAllLayers = () => {
     })
     return
   }
-  
+
   try {
     const style = map.getStyle()
     console.log('获取样式:', style ? '成功' : '失败')
     console.log('样式类型:', typeof style)
-    
+
     if (typeof style === 'string') {
       console.log('样式是URL字符串:', style)
       return
     }
-    
+
     const layers = style.layers || []
     console.log('=== 所有图层列表 ===')
     console.log(`总共 ${layers.length} 个图层`)
-    
+
     // 查找包含 water 的图层
-    const waterRelated = layers.filter((l: any) => 
-      l.id.toLowerCase().includes('water')
-    )
-    
+    const waterRelated = layers.filter((l: any) => l.id.toLowerCase().includes('water'))
+
     if (waterRelated.length > 0) {
       console.log('=== 水体相关图层（包含 water） ===')
       waterRelated.forEach((layer: any) => {
@@ -324,7 +302,7 @@ const listAllLayers = () => {
     } else {
       console.log('未找到包含 "water" 的图层')
     }
-    
+
     // 列出所有图层ID（用于查找）
     console.log('=== 所有图层ID（前50个） ===')
     layers.slice(0, 50).forEach((layer: any, index: number) => {
@@ -339,40 +317,40 @@ const listAllLayers = () => {
 // 监听地图实例，保存 center 和 zoom
 watch(
   () => mapRef?.value,
-  (map) => {
+  map => {
     if (!map) {
       console.log('地图实例不存在')
       return
     }
-    
+
     // 确保 map 是 Mapbox Map 实例
     if (typeof map.on !== 'function') {
       console.warn('map 不是有效的 Mapbox Map 实例:', map)
       return
     }
-    
+
     console.log('地图实例已设置，开始初始化...')
-    
+
     // 监听地图移动，更新保存的 center 和 zoom
     const updatePosition = () => {
       const center = map.getCenter()
       currentCenter.value = [center.lng, center.lat]
       currentZoom.value = map.getZoom()
     }
-    
+
     map.on('moveend', updatePosition)
     map.on('zoomend', updatePosition)
-    
+
     // 初始化时保存位置并列出图层
     const initMap = () => {
       console.log('初始化地图位置...')
       updatePosition()
-      
+
       // 初始化颜色方案到 Pinia store
       setTimeout(() => {
         updateColorSchemeInStore()
       }, 500)
-      
+
       // 多次尝试列出图层
       const tryListLayers = () => {
         console.log('尝试列出图层...')
@@ -388,20 +366,20 @@ watch(
           })
         }
       }
-      
+
       // 立即尝试
       tryListLayers()
-      
+
       // 延迟尝试（防止事件已触发）
       setTimeout(() => {
         tryListLayers()
       }, 2000)
-      
+
       setTimeout(() => {
         tryListLayers()
       }, 5000)
     }
-    
+
     if (map.isStyleLoaded()) {
       console.log('样式已加载，立即初始化')
       initMap()
@@ -441,7 +419,7 @@ const saveOriginalColors = () => {
 
     allLayersConfig.forEach(layerConfig => {
       const layerId = layerConfig.id
-      
+
       // 检查图层是否存在
       if (!map.getLayer(layerId)) {
         console.warn(`图层 ${layerId} 不存在于地图中，跳过保存原始颜色`)
@@ -468,8 +446,10 @@ const saveOriginalColors = () => {
         skippedCount++
       }
     })
-    
-    console.log(`保存原始颜色完成: 成功 ${savedCount} 个，跳过 ${skippedCount} 个，总计 ${allLayersConfig.length} 个可配置图层`)
+
+    console.log(
+      `保存原始颜色完成: 成功 ${savedCount} 个，跳过 ${skippedCount} 个，总计 ${allLayersConfig.length} 个可配置图层`
+    )
   } catch (error) {
     console.warn('保存原始颜色失败:', error)
   }
@@ -505,7 +485,7 @@ const applyColorsToMap = () => {
     let modifiedCount = 0
 
     // 应用所有已设置的颜色（使用 setPaintProperty，性能更好）
-    Object.keys(layerColors).forEach((layerId) => {
+    Object.keys(layerColors).forEach(layerId => {
       const color = layerColors[layerId]
       if (!color) return
 
@@ -524,12 +504,14 @@ const applyColorsToMap = () => {
 
       // 转换颜色格式
       const mapboxColor = hexToRgb(color)
-      
+
       try {
         // 使用 setPaintProperty 直接更新颜色（高性能，不会重新加载整个样式）
         map.setPaintProperty(layerId, layerConfig.paintProperty, mapboxColor)
         modifiedCount++
-        console.log(`✓ 更新颜色: 图层 ${layerId} 的 ${layerConfig.paintProperty} 设置为 ${mapboxColor}`)
+        console.log(
+          `✓ 更新颜色: 图层 ${layerId} 的 ${layerConfig.paintProperty} 设置为 ${mapboxColor}`
+        )
       } catch (error) {
         console.warn(`更新图层 ${layerId} 的颜色失败:`, error)
       }
@@ -577,22 +559,18 @@ const resetLayerColorToDefault = (layerId: string, paintProperty: string) => {
 }
 
 // 更新图层颜色
-const updateLayerColor = (
-  layerId: string,
-  color: string | null,
-  paintProperty: string
-) => {
+const updateLayerColor = (layerId: string, color: string | null, paintProperty: string) => {
   console.log('=== updateLayerColor 被调用 ===')
   console.log('图层ID:', layerId)
   console.log('颜色:', color)
   console.log('paintProperty:', paintProperty)
-  
+
   const map = getMap()
   if (!map) {
     console.warn('地图未加载')
     return
   }
-  
+
   // 移除调试代码以提高性能
 
   if (!color) {
@@ -617,10 +595,10 @@ const updateLayerColor = (
   // 保存颜色状态
   layerColors[layerId] = color
   console.log('当前所有颜色设置:', { ...layerColors })
-  
+
   // 更新 Pinia store
   updateColorSchemeInStore()
-  
+
   // 应用颜色到地图（高性能方法）
   applyColorsToMap()
 }
@@ -633,10 +611,10 @@ const resetLayerColor = (
 ) => {
   // 删除该图层的颜色设置
   delete layerColors[layerId]
-  
+
   // 更新 Pinia store
   updateColorSchemeInStore()
-  
+
   // 重置图层颜色为默认值
   resetLayerColorToDefault(layerId, paintProperty)
 }
@@ -651,19 +629,19 @@ const resetAllColors = () => {
     ...greenLayers,
     ...labelLayers,
   ]
-  
+
   // 重置每个图层的颜色
   allLayersConfig.forEach(layerConfig => {
     if (layerColors[layerConfig.id]) {
       resetLayerColorToDefault(layerConfig.id, layerConfig.paintProperty)
     }
   })
-  
+
   // 清空所有颜色设置
   Object.keys(layerColors).forEach(key => {
     delete layerColors[key]
   })
-  
+
   // 更新 Pinia store
   updateColorSchemeInStore()
 }
@@ -677,24 +655,18 @@ const hexToRgb = (hex: string): string => {
 
   // 移除 # 号
   const cleanHex = hex.replace('#', '')
-  
+
   // 解析 RGB
   const r = parseInt(cleanHex.substring(0, 2), 16)
   const g = parseInt(cleanHex.substring(2, 4), 16)
   const b = parseInt(cleanHex.substring(4, 6), 16)
-  
+
   return `rgb(${r}, ${g}, ${b})`
 }
 
 // 获取所有可配置的图层配置列表
 const getAllConfigurableLayers = (): LayerConfig[] => {
-  return [
-    ...waterLayers,
-    ...roadLayers,
-    ...buildingLayers,
-    ...greenLayers,
-    ...labelLayers,
-  ]
+  return [...waterLayers, ...roadLayers, ...buildingLayers, ...greenLayers, ...labelLayers]
 }
 
 // 从地图样式中获取图层的默认颜色
@@ -714,7 +686,7 @@ const getDefaultColorFromMap = (layerId: string, paintProperty: string): string 
     // 使用 Mapbox API 获取当前计算后的颜色值
     // getPaintProperty 会返回计算后的值（对于表达式会计算，对于静态值直接返回）
     const colorValue = map.getPaintProperty(layerId, paintProperty)
-    
+
     if (!colorValue) {
       return null
     }
@@ -725,7 +697,11 @@ const getDefaultColorFromMap = (layerId: string, paintProperty: string): string 
     }
 
     // 如果返回的是其他类型（理论上不应该），尝试转换
-    console.warn(`图层 ${layerId} 的 ${paintProperty} 返回了非字符串类型:`, typeof colorValue, colorValue)
+    console.warn(
+      `图层 ${layerId} 的 ${paintProperty} 返回了非字符串类型:`,
+      typeof colorValue,
+      colorValue
+    )
     return null
   } catch (error) {
     console.warn(`获取图层 ${layerId} 的默认颜色失败:`, error)
@@ -740,23 +716,23 @@ const rgbToHex = (rgb: string): string | null => {
   if (!match) {
     return null
   }
-  
+
   const r = parseInt(match[1], 10)
   const g = parseInt(match[2], 10)
   const b = parseInt(match[3], 10)
-  
+
   const toHex = (n: number) => {
     const hex = n.toString(16)
     return hex.length === 1 ? '0' + hex : hex
   }
-  
+
   return `#${toHex(r)}${toHex(g)}${toHex(b)}`
 }
 
 // 规范化颜色为 HEX 格式
 const normalizeToHex = (color: string): string | null => {
   if (!color) return null
-  
+
   // 如果已经是 hex 格式
   if (color.startsWith('#')) {
     // 验证 hex 格式（3位或6位）
@@ -766,17 +742,17 @@ const normalizeToHex = (color: string): string | null => {
     }
     return null
   }
-  
+
   // 如果是 rgb 格式，转换为 hex
   if (color.startsWith('rgb')) {
     return rgbToHex(color)
   }
-  
+
   // 如果没有 # 前缀，尝试添加
   if (/^[0-9A-Fa-f]{3}$/.test(color) || /^[0-9A-Fa-f]{6}$/.test(color)) {
     return '#' + color.toUpperCase()
   }
-  
+
   return null
 }
 
@@ -784,14 +760,14 @@ const normalizeToHex = (color: string): string | null => {
 // 包含所有可配置的图层，未修改的使用 Mapbox 默认颜色，占比默认等权重
 const generateCurrentColorScheme = (): ColorScheme => {
   const allLayersConfig = getAllConfigurableLayers()
-  
+
   // 包含所有图层的颜色配置（必须包含所有可配置的图层）
   const allLayers: ColorSchemeItem[] = []
-  
+
   allLayersConfig.forEach(layerConfig => {
     let color: string | null = null
     let colorSource = 'unknown'
-    
+
     // 优先使用用户设置的颜色
     if (layerColors[layerConfig.id]) {
       color = layerColors[layerConfig.id]
@@ -816,7 +792,7 @@ const generateCurrentColorScheme = (): ColorScheme => {
         }
       }
     }
-    
+
     // 规范化颜色为 HEX 格式
     let hexColor: string | null = null
     if (color) {
@@ -825,32 +801,34 @@ const generateCurrentColorScheme = (): ColorScheme => {
         console.warn(`图层 ${layerConfig.id} 的颜色格式无效，尝试其他方式: ${color}`)
       }
     }
-    
+
     // 如果仍然无法获取颜色，使用一个默认占位颜色（确保所有图层都被包含）
     if (!hexColor) {
       // 使用灰色作为占位颜色，确保图层被包含
       hexColor = '#808080' // 灰色
       console.warn(`图层 ${layerConfig.id} 无法获取颜色值，使用占位颜色: ${hexColor}`)
     }
-    
+
     // 确保所有图层都被添加到方案中
     allLayers.push({
       id: layerConfig.id,
       color: hexColor,
       weight: 0, // 先设为0，后面统一计算等权重
     })
-    
+
     console.log(`图层 ${layerConfig.id}: 颜色=${hexColor}, 来源=${colorSource}`)
   })
-  
+
   // 计算等权重
   const weight = allLayers.length > 0 ? 1 / allLayers.length : 0
   allLayers.forEach(layer => {
     layer.weight = weight
   })
-  
-  console.log(`生成颜色方案: 包含 ${allLayers.length} 个图层（应该包含所有 ${allLayersConfig.length} 个可配置图层）`)
-  
+
+  console.log(
+    `生成颜色方案: 包含 ${allLayers.length} 个图层（应该包含所有 ${allLayersConfig.length} 个可配置图层）`
+  )
+
   return {
     layers: allLayers,
   }
@@ -859,7 +837,7 @@ const generateCurrentColorScheme = (): ColorScheme => {
 // 更新 Pinia store 中的颜色方案
 const updateColorSchemeInStore = () => {
   const map = getMap()
-  
+
   // 如果地图未加载或样式未加载，延迟更新
   if (!map || !map.isStyleLoaded()) {
     console.log('地图样式未加载，延迟更新颜色方案')
@@ -870,7 +848,7 @@ const updateColorSchemeInStore = () => {
     }
     return
   }
-  
+
   const scheme = generateCurrentColorScheme()
   colorSchemeStore.setCurrentScheme(scheme)
   console.log('颜色方案已更新到 Pinia store:', scheme)
@@ -882,10 +860,10 @@ onMounted(() => {
   console.log('MapStyle 组件已挂载')
   console.log('mapRef:', mapRef)
   console.log('mapRef.value:', mapRef?.value)
-  
+
   // 初始化颜色方案到 Pinia store
   updateColorSchemeInStore()
-  
+
   // 定期检查地图是否加载（更频繁的检查）
   let checkCount = 0
   const checkMap = setInterval(() => {
@@ -907,7 +885,7 @@ onMounted(() => {
       }
     }
   }, 200) // 每200ms检查一次，更频繁
-  
+
   // 20秒后停止检查
   setTimeout(() => {
     clearInterval(checkMap)
@@ -920,7 +898,6 @@ onMounted(() => {
     }
   }, 20000)
 })
-
 </script>
 
 <style scoped>

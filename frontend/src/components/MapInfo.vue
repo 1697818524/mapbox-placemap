@@ -2,7 +2,7 @@
   <div class="map-info">
     <!-- 搜索组件 -->
     <MapSearch ref="mapSearchRef" @search-enter="handleSearchEnter" />
-    
+
     <!-- 百度图片搜索结果 -->
     <div class="image-results">
       <h3 class="image-results-title">{{ t('mapInfo.relatedImages') }}</h3>
@@ -21,7 +21,7 @@
             <img
               :src="image.thumbnail || image.url"
               :alt="image.title || t('mapInfo.image')"
-              @error="handleImageError($event, index)"
+              @error="handleImageError($event)"
               loading="lazy"
             />
             <div class="image-overlay">
@@ -43,64 +43,20 @@ import { Loading } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { useI18n } from 'vue-i18n'
 import MapSearch from './MapSearch.vue'
-import type { GeocodeFeature } from './MapSearch.vue'
+import { imageApi } from '@/api'
+import { API_CONFIG, IMAGE_CONFIG } from '@/config'
+import type { ImageResult } from '@/types/api'
 
 const { t } = useI18n()
-
-// 图片结果类型
-type ImageResult = {
-  url: string
-  thumbnail?: string
-  title?: string
-  width?: number
-  height?: number
-}
 
 const mapSearchRef = ref<InstanceType<typeof MapSearch> | null>(null)
 const imageResults = ref<ImageResult[]>([])
 const isLoadingImages = ref(false)
 
-// 百度图片搜索 API（需要通过后端代理，这里使用模拟数据或直接调用）
-// 注意：由于跨域限制，实际使用时需要通过后端代理
-const searchBaiduImages = async (keyword: string): Promise<ImageResult[]> => {
-  try {
-    // 这里使用百度图片搜索的公开接口
-    // 实际项目中建议通过后端代理，避免跨域问题
-    const searchUrl = `https://image.baidu.com/search/index?tn=baiduimage&word=${encodeURIComponent(keyword)}`
-    
-    // 由于百度图片搜索有跨域限制，这里提供一个模拟的搜索结果
-    // 实际使用时，你需要：
-    // 1. 通过后端API代理百度图片搜索
-    // 2. 或者使用其他图片搜索API（如 Unsplash API、Pixabay API 等）
-    
-    // 模拟数据（实际应该从API获取）
-    const imageLabel = t('mapInfo.image')
-    const mockImages: ImageResult[] = []
-    for (let i = 0; i < 9; i++) {
-      mockImages.push({
-        url: `https://picsum.photos/400/300?random=${i}&keyword=${encodeURIComponent(keyword)}`,
-        thumbnail: `https://picsum.photos/200/150?random=${i}&keyword=${encodeURIComponent(keyword)}`,
-        title: `${keyword} - ${imageLabel} ${i + 1}`,
-        width: 400,
-        height: 300,
-      })
-    }
-    
-    // 模拟网络延迟
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    
-    return mockImages
-  } catch (error) {
-    console.error('搜索图片失败:', error)
-    ElMessage.error(t('mapInfo.imageSearchError'))
-    return []
-  }
-}
-
 // 处理回车搜索事件
 const handleSearchEnter = async () => {
   const searchQuery = mapSearchRef.value?.searchQuery
-  if (!searchQuery || searchQuery.trim().length < 2) {
+  if (!searchQuery || searchQuery.trim().length < API_CONFIG.SEARCH_MIN_LENGTH) {
     imageResults.value = []
     return
   }
@@ -109,7 +65,8 @@ const handleSearchEnter = async () => {
   imageResults.value = []
 
   try {
-    const images = await searchBaiduImages(searchQuery)
+    const imageLabel = t('mapInfo.image')
+    const images = await imageApi.search(searchQuery, IMAGE_CONFIG.GRID_COLUMNS * 3, imageLabel)
     imageResults.value = images
   } catch (error) {
     console.error('搜索图片失败:', error)
@@ -120,11 +77,12 @@ const handleSearchEnter = async () => {
 }
 
 // 处理图片加载错误
-const handleImageError = (event: Event, index: number) => {
-  console.warn(`图片 ${index} 加载失败`)
-  // 可以设置一个默认占位图
+const handleImageError = (event: Event) => {
+  console.warn('图片加载失败')
+  // 设置默认占位图
   const img = event.target as HTMLImageElement
-  img.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="150"%3E%3Crect fill="%23ddd" width="200" height="150"/%3E%3Ctext fill="%23999" font-family="sans-serif" font-size="14" x="50%25" y="50%25" text-anchor="middle" dy=".3em"%3E图片加载失败%3C/text%3E%3C/svg%3E'
+  img.src =
+    'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="150"%3E%3Crect fill="%23ddd" width="200" height="150"/%3E%3Ctext fill="%23999" font-family="sans-serif" font-size="14" x="50%25" y="50%25" text-anchor="middle" dy=".3em"%3E图片加载失败%3C/text%3E%3C/svg%3E'
 }
 
 // 打开图片（在新窗口）
@@ -135,7 +93,7 @@ const openImage = (url: string) => {
 // 监听搜索框变化，清空图片结果
 watch(
   () => mapSearchRef.value?.searchQuery,
-  (newVal) => {
+  newVal => {
     if (!newVal || newVal.trim().length === 0) {
       imageResults.value = []
     }
@@ -197,7 +155,9 @@ watch(
   border-radius: 8px;
   overflow: hidden;
   background: #f5f7fa;
-  transition: transform 0.2s, box-shadow 0.2s;
+  transition:
+    transform 0.2s,
+    box-shadow 0.2s;
 }
 
 .image-item:hover {

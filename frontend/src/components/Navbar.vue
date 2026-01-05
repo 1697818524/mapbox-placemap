@@ -39,8 +39,8 @@ const currentLabel = computed(() => (currentLocale.value === 'zh-CN' ? '中文' 
 
 const handleLocaleChange = (value: string) => {
   if (value === 'zh-CN' || value === 'en-US') {
-  appStore.setLocale(value)
-  currentLocale.value = value
+    appStore.setLocale(value)
+    currentLocale.value = value
   }
 }
 </script>
@@ -90,7 +90,6 @@ const handleLocaleChange = (value: string) => {
   color: #1f2937;
 }
 
-
 .nav-right {
   flex: 1;
   display: flex;
@@ -110,4 +109,3 @@ const handleLocaleChange = (value: string) => {
   user-select: none;
 }
 </style>
-

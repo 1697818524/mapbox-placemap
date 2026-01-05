@@ -1,13 +1,15 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import i18n from '@/i18n'
+import { storage } from '@/utils'
+import { MAP_CONFIG, STORAGE_KEYS } from '@/config'
 import { type MapState, type LngLatTuple } from '@/types/map'
 
 // 颜色方案类型定义
 export interface ColorSchemeItem {
-  id: string  // 图层ID
-  color: string  // hex颜色值，如 "#FF0000"
-  weight: number  // 占比（权重），默认等权重
+  id: string // 图层ID
+  color: string // hex颜色值，如 "#FF0000"
+  weight: number // 占比（权重），默认等权重
 }
 
 export interface ColorScheme {
@@ -15,12 +17,12 @@ export interface ColorScheme {
 }
 
 export const useAppStore = defineStore('app', () => {
-  const locale = ref<string>(localStorage.getItem('locale') || 'zh-CN')
+  const locale = ref<string>(storage.get<string>(STORAGE_KEYS.LOCALE, 'zh-CN') || 'zh-CN')
 
   const setLocale = (lang: 'zh-CN' | 'en-US') => {
     locale.value = lang
     i18n.global.locale.value = lang
-    localStorage.setItem('locale', lang)
+    storage.set(STORAGE_KEYS.LOCALE, lang)
     document.documentElement.lang = lang
   }
 
@@ -31,8 +33,8 @@ export const useAppStore = defineStore('app', () => {
 })
 
 export const useMapStore = defineStore('map', () => {
-  const center = ref<MapState['center']>([116.3974, 39.9093]) // 默认中心点：北京天安门
-  const zoom = ref<MapState['zoom']>(10)
+  const center = ref<MapState['center']>(MAP_CONFIG.DEFAULT_CENTER)
+  const zoom = ref<MapState['zoom']>(MAP_CONFIG.DEFAULT_ZOOM)
 
   const setCenter = (newCenter: LngLatTuple) => {
     center.value = newCenter
@@ -62,7 +64,7 @@ export const useMapStore = defineStore('map', () => {
 export const useColorSchemeStore = defineStore('colorScheme', () => {
   // 当前颜色方案
   const currentScheme = ref<ColorScheme>({ layers: [] })
-  
+
   // 颜色方案列表（用于遗传算法）
   const colorSchemes = ref<ColorScheme[]>([])
 
@@ -95,4 +97,3 @@ export const useColorSchemeStore = defineStore('colorScheme', () => {
     clearColorSchemes,
   }
 })
-

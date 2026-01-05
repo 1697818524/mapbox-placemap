@@ -4,5 +4,3 @@ export interface MapState {
   center: LngLatTuple
   zoom: number
 }
-
-

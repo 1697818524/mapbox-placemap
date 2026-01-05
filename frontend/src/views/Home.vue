@@ -42,7 +42,7 @@ provide('mapInstance', mapRef)
 }
 .navbar {
   height: 100px;
-  background-color: #FEFEFE;
+  background-color: #fefefe;
   flex-shrink: 0;
 }
 /* 下栏区域，占据剩余部分 */
@@ -54,7 +54,7 @@ provide('mapInstance', mapRef)
   overflow: hidden;
 }
 .left-sidebar {
-  width:300px;
+  width: 300px;
   background-color: aqua;
   flex-shrink: 0;
 }
@@ -64,7 +64,7 @@ provide('mapInstance', mapRef)
   flex-shrink: 0;
 }
 .right-sidebar {
-  width:400px;
+  width: 400px;
   background-color: #f0f0f0;
   flex-shrink: 0;
 }

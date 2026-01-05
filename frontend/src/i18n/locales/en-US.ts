@@ -21,7 +21,8 @@ export default {
     relatedImages: 'Related Images',
     loadingImages: 'Loading images...',
     image: 'Image',
-    imageSearchPlaceholder: 'Please enter a place name and press Enter to search for related images',
+    imageSearchPlaceholder:
+      'Please enter a place name and press Enter to search for related images',
     imageSearchError: 'Failed to search images, please try again later',
     imageSearchFailed: 'Failed to search images',
     imageLoadFailed: 'Image failed to load',
@@ -58,4 +59,3 @@ export default {
     },
   },
 }
-
