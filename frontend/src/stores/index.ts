@@ -16,6 +16,11 @@ export interface ColorScheme {
   layers: ColorSchemeItem[]
 }
 
+// 带 ID 的颜色方案（用于生成的方案）
+export interface ColorSchemeWithId extends ColorScheme {
+  id: string // 方案唯一标识
+}
+
 export const useAppStore = defineStore('app', () => {
   const locale = ref<string>(storage.get<string>(STORAGE_KEYS.LOCALE, 'zh-CN') || 'zh-CN')
 
@@ -65,8 +70,8 @@ export const useColorSchemeStore = defineStore('colorScheme', () => {
   // 当前颜色方案
   const currentScheme = ref<ColorScheme>({ layers: [] })
 
-  // 颜色方案列表（用于遗传算法）
-  const colorSchemes = ref<ColorScheme[]>([])
+  // 颜色方案列表（用于遗传算法，支持带 id 的方案）
+  const colorSchemes = ref<Array<ColorScheme | ColorSchemeWithId>>([])
 
   // 设置当前颜色方案
   const setCurrentScheme = (scheme: ColorScheme) => {
@@ -74,12 +79,12 @@ export const useColorSchemeStore = defineStore('colorScheme', () => {
   }
 
   // 添加颜色方案到列表
-  const addColorScheme = (scheme: ColorScheme) => {
+  const addColorScheme = (scheme: ColorScheme | ColorSchemeWithId) => {
     colorSchemes.value.push(scheme)
   }
 
   // 设置颜色方案列表
-  const setColorSchemes = (schemes: ColorScheme[]) => {
+  const setColorSchemes = (schemes: Array<ColorScheme | ColorSchemeWithId>) => {
     colorSchemes.value = schemes
   }
 

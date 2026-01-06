@@ -56,5 +56,11 @@ export default {
       placeLabel: '地点标签',
       poiLabel: '兴趣点标签',
     },
+    generateSchemes: '生成方案',
+    generating: '生成中...',
+    generateSuccess: '成功生成 {count} 个方案',
+    generateError: '生成方案失败',
+    noCurrentScheme: '当前没有可用的样式方案',
+    generatedCount: '已生成 {count} 个方案',
   },
 }

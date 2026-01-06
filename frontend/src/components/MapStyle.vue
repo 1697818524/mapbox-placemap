@@ -135,15 +135,34 @@
         </el-collapse-item>
       </el-collapse>
     </el-scrollbar>
+
+    <!-- 生成方案按钮区域 -->
+    <div class="generate-section">
+      <el-button
+        type="primary"
+        :loading="isGenerating"
+        :disabled="!canGenerate"
+        @click="handleGenerateSchemes"
+        class="generate-button"
+      >
+        <el-icon v-if="!isGenerating"><MagicStick /></el-icon>
+        {{ isGenerating ? t('mapStyle.generating') : t('mapStyle.generateSchemes') }}
+      </el-button>
+      <div v-if="generatedCount > 0" class="generate-info">
+        {{ t('mapStyle.generatedCount', { count: generatedCount }) }}
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, watch, onMounted, inject } from 'vue'
+import { ref, reactive, watch, onMounted, inject, computed } from 'vue'
 import { ElMessage } from 'element-plus'
+import { MagicStick } from '@element-plus/icons-vue'
 import { useI18n } from 'vue-i18n'
 import type mapboxgl from 'mapbox-gl'
 import { useColorSchemeStore, type ColorScheme, type ColorSchemeItem } from '@/stores'
+import { schemeApi, type ColorSchemeWithId } from '@/api/scheme'
 
 const { t } = useI18n()
 
@@ -247,20 +266,13 @@ const labelLayers: LayerConfig[] = [
 
 // 列出所有图层（用于调试）
 const listAllLayers = () => {
-  console.log('开始列出图层...')
   const map = getMap()
   if (!map) {
-    console.log('地图未加载')
     return
   }
 
-  console.log('地图已加载，检查样式状态...')
-  console.log('isStyleLoaded:', map.isStyleLoaded())
-
   if (!map.isStyleLoaded()) {
-    console.log('样式未加载，等待...')
     map.once('styledata', () => {
-      console.log('样式数据已加载，再次尝试列出图层')
       setTimeout(() => listAllLayers(), 500)
     })
     return
@@ -268,47 +280,12 @@ const listAllLayers = () => {
 
   try {
     const style = map.getStyle()
-    console.log('获取样式:', style ? '成功' : '失败')
-    console.log('样式类型:', typeof style)
 
     if (typeof style === 'string') {
-      console.log('样式是URL字符串:', style)
       return
     }
 
     const layers = style.layers || []
-    console.log('=== 所有图层列表 ===')
-    console.log(`总共 ${layers.length} 个图层`)
-
-    // 查找包含 water 的图层
-    const waterRelated = layers.filter((l: any) => l.id.toLowerCase().includes('water'))
-
-    if (waterRelated.length > 0) {
-      console.log('=== 水体相关图层（包含 water） ===')
-      waterRelated.forEach((layer: any) => {
-        console.log(`图层ID: "${layer.id}", 类型: ${layer.type}`)
-        if (layer.paint) {
-          const paintKeys = Object.keys(layer.paint)
-          console.log(`  paint属性:`, paintKeys)
-          if (layer.paint['fill-color']) {
-            console.log(`  fill-color:`, layer.paint['fill-color'])
-          }
-          if (layer.paint['line-color']) {
-            console.log(`  line-color:`, layer.paint['line-color'])
-          }
-        }
-      })
-      console.log('================================')
-    } else {
-      console.log('未找到包含 "water" 的图层')
-    }
-
-    // 列出所有图层ID（用于查找）
-    console.log('=== 所有图层ID（前50个） ===')
-    layers.slice(0, 50).forEach((layer: any, index: number) => {
-      console.log(`${index + 1}. "${layer.id}" (${layer.type})`)
-    })
-    console.log('============================')
   } catch (e) {
     console.error('列出图层失败:', e)
   }
@@ -319,31 +296,32 @@ watch(
   () => mapRef?.value,
   map => {
     if (!map) {
-      console.log('地图实例不存在')
       return
     }
 
     // 确保 map 是 Mapbox Map 实例
-    if (typeof map.on !== 'function') {
-      console.warn('map 不是有效的 Mapbox Map 实例:', map)
+    // 检查 map 对象是否有 Mapbox Map 的关键方法
+    // 处理 Proxy 对象的情况
+    const actualMap = map?.value || map
+    if (!actualMap || typeof actualMap.on !== 'function' || typeof actualMap.getCenter !== 'function' || typeof actualMap.getZoom !== 'function') {
       return
     }
-
-    console.log('地图实例已设置，开始初始化...')
+    
+    // 使用实际的地图实例
+    const mapInstance = actualMap
 
     // 监听地图移动，更新保存的 center 和 zoom
     const updatePosition = () => {
-      const center = map.getCenter()
+      const center = mapInstance.getCenter()
       currentCenter.value = [center.lng, center.lat]
-      currentZoom.value = map.getZoom()
+      currentZoom.value = mapInstance.getZoom()
     }
 
-    map.on('moveend', updatePosition)
-    map.on('zoomend', updatePosition)
+    mapInstance.on('moveend', updatePosition)
+    mapInstance.on('zoomend', updatePosition)
 
     // 初始化时保存位置并列出图层
     const initMap = () => {
-      console.log('初始化地图位置...')
       updatePosition()
 
       // 初始化颜色方案到 Pinia store
@@ -353,13 +331,10 @@ watch(
 
       // 多次尝试列出图层
       const tryListLayers = () => {
-        console.log('尝试列出图层...')
-        if (map.isStyleLoaded()) {
+        if (mapInstance.isStyleLoaded()) {
           listAllLayers()
         } else {
-          console.log('样式未加载，等待 load 事件...')
-          map.once('load', () => {
-            console.log('load 事件触发')
+          mapInstance.once('load', () => {
             setTimeout(() => {
               listAllLayers()
             }, 1000)
@@ -380,15 +355,13 @@ watch(
       }, 5000)
     }
 
-    if (map.isStyleLoaded()) {
-      console.log('样式已加载，立即初始化')
+    // 初始化地图
+    if (mapInstance.isStyleLoaded && mapInstance.isStyleLoaded()) {
       initMap()
       // 保存原始颜色
       setTimeout(() => saveOriginalColors(), 500)
-    } else {
-      console.log('样式未加载，等待 load 事件')
-      map.once('load', () => {
-        console.log('load 事件触发，开始初始化')
+    } else if (mapInstance.once) {
+      mapInstance.once('load', () => {
         initMap()
         // 保存原始颜色
         setTimeout(() => saveOriginalColors(), 500)
@@ -422,7 +395,6 @@ const saveOriginalColors = () => {
 
       // 检查图层是否存在
       if (!map.getLayer(layerId)) {
-        console.warn(`图层 ${layerId} 不存在于地图中，跳过保存原始颜色`)
         skippedCount++
         return
       }
@@ -435,23 +407,16 @@ const saveOriginalColors = () => {
           if (!originalColors[layerId]) {
             originalColors[layerId] = currentColor
             savedCount++
-            console.log(`保存图层 ${layerId} 的原始颜色: ${currentColor}`)
           }
         } else {
-          console.warn(`图层 ${layerId} 的颜色值不是字符串类型:`, typeof currentColor, currentColor)
           skippedCount++
         }
       } catch (error) {
-        console.warn(`获取图层 ${layerId} 的原始颜色失败:`, error)
         skippedCount++
       }
     })
-
-    console.log(
-      `保存原始颜色完成: 成功 ${savedCount} 个，跳过 ${skippedCount} 个，总计 ${allLayersConfig.length} 个可配置图层`
-    )
   } catch (error) {
-    console.warn('保存原始颜色失败:', error)
+    // 静默处理错误
   }
 }
 
@@ -459,13 +424,11 @@ const saveOriginalColors = () => {
 const applyColorsToMap = () => {
   const map = getMap()
   if (!map) {
-    console.warn('地图未加载')
     return
   }
 
   // 检查样式是否已加载
   if (!map.isStyleLoaded()) {
-    console.warn('样式未加载，等待加载完成')
     map.once('load', () => {
       setTimeout(() => applyColorsToMap(), 100)
     })
@@ -492,13 +455,11 @@ const applyColorsToMap = () => {
       // 找到对应的图层配置
       const layerConfig = allLayersConfig.find(l => l.id === layerId)
       if (!layerConfig) {
-        console.warn(`未找到图层配置: ${layerId}`)
         return
       }
 
       // 检查图层是否存在
       if (!map.getLayer(layerId)) {
-        console.warn(`图层 ${layerId} 不存在于地图中`)
         return
       }
 
@@ -509,17 +470,10 @@ const applyColorsToMap = () => {
         // 使用 setPaintProperty 直接更新颜色（高性能，不会重新加载整个样式）
         map.setPaintProperty(layerId, layerConfig.paintProperty, mapboxColor)
         modifiedCount++
-        console.log(
-          `✓ 更新颜色: 图层 ${layerId} 的 ${layerConfig.paintProperty} 设置为 ${mapboxColor}`
-        )
       } catch (error) {
-        console.warn(`更新图层 ${layerId} 的颜色失败:`, error)
+        // 静默处理错误
       }
     })
-
-    if (modifiedCount > 0) {
-      console.log(`✓ 已更新 ${modifiedCount} 个图层的颜色`)
-    }
   } catch (error) {
     console.error('应用颜色失败:', error)
   }
@@ -535,7 +489,6 @@ const resetLayerColorToDefault = (layerId: string, paintProperty: string) => {
   try {
     // 检查图层是否存在
     if (!map.getLayer(layerId)) {
-      console.warn(`图层 ${layerId} 不存在于地图中`)
       return
     }
 
@@ -544,7 +497,6 @@ const resetLayerColorToDefault = (layerId: string, paintProperty: string) => {
     if (originalColor) {
       // 恢复原始颜色
       map.setPaintProperty(layerId, paintProperty, originalColor)
-      console.log(`✓ 恢复图层 ${layerId} 的原始颜色: ${originalColor}`)
     } else {
       // 如果没有保存的原始颜色，尝试从当前样式获取
       const currentColor = map.getPaintProperty(layerId, paintProperty)
@@ -554,24 +506,16 @@ const resetLayerColorToDefault = (layerId: string, paintProperty: string) => {
       }
     }
   } catch (error) {
-    console.warn(`重置图层 ${layerId} 颜色失败:`, error)
+    // 静默处理错误
   }
 }
 
 // 更新图层颜色
 const updateLayerColor = (layerId: string, color: string | null, paintProperty: string) => {
-  console.log('=== updateLayerColor 被调用 ===')
-  console.log('图层ID:', layerId)
-  console.log('颜色:', color)
-  console.log('paintProperty:', paintProperty)
-
   const map = getMap()
   if (!map) {
-    console.warn('地图未加载')
     return
   }
-
-  // 移除调试代码以提高性能
 
   if (!color) {
     // 如果颜色为空，删除该图层的颜色设置
@@ -594,7 +538,6 @@ const updateLayerColor = (layerId: string, color: string | null, paintProperty: 
 
   // 保存颜色状态
   layerColors[layerId] = color
-  console.log('当前所有颜色设置:', { ...layerColors })
 
   // 更新 Pinia store
   updateColorSchemeInStore()
@@ -679,7 +622,6 @@ const getDefaultColorFromMap = (layerId: string, paintProperty: string): string 
   try {
     // 检查图层是否存在
     if (!map.getLayer(layerId)) {
-      console.warn(`图层 ${layerId} 不存在于地图中`)
       return null
     }
 
@@ -696,15 +638,9 @@ const getDefaultColorFromMap = (layerId: string, paintProperty: string): string 
       return colorValue
     }
 
-    // 如果返回的是其他类型（理论上不应该），尝试转换
-    console.warn(
-      `图层 ${layerId} 的 ${paintProperty} 返回了非字符串类型:`,
-      typeof colorValue,
-      colorValue
-    )
+    // 如果返回的是其他类型（理论上不应该），返回 null
     return null
   } catch (error) {
-    console.warn(`获取图层 ${layerId} 的默认颜色失败:`, error)
     return null
   }
 }
@@ -797,16 +733,12 @@ const generateCurrentColorScheme = (): ColorScheme => {
     let hexColor: string | null = null
     if (color) {
       hexColor = normalizeToHex(color)
-      if (!hexColor) {
-        console.warn(`图层 ${layerConfig.id} 的颜色格式无效，尝试其他方式: ${color}`)
-      }
     }
 
     // 如果仍然无法获取颜色，使用一个默认占位颜色（确保所有图层都被包含）
     if (!hexColor) {
       // 使用灰色作为占位颜色，确保图层被包含
       hexColor = '#808080' // 灰色
-      console.warn(`图层 ${layerConfig.id} 无法获取颜色值，使用占位颜色: ${hexColor}`)
     }
 
     // 确保所有图层都被添加到方案中
@@ -815,8 +747,6 @@ const generateCurrentColorScheme = (): ColorScheme => {
       color: hexColor,
       weight: 0, // 先设为0，后面统一计算等权重
     })
-
-    console.log(`图层 ${layerConfig.id}: 颜色=${hexColor}, 来源=${colorSource}`)
   })
 
   // 计算等权重
@@ -824,10 +754,6 @@ const generateCurrentColorScheme = (): ColorScheme => {
   allLayers.forEach(layer => {
     layer.weight = weight
   })
-
-  console.log(
-    `生成颜色方案: 包含 ${allLayers.length} 个图层（应该包含所有 ${allLayersConfig.length} 个可配置图层）`
-  )
 
   return {
     layers: allLayers,
@@ -840,7 +766,6 @@ const updateColorSchemeInStore = () => {
 
   // 如果地图未加载或样式未加载，延迟更新
   if (!map || !map.isStyleLoaded()) {
-    console.log('地图样式未加载，延迟更新颜色方案')
     if (map) {
       map.once('load', () => {
         setTimeout(() => updateColorSchemeInStore(), 100)
@@ -851,50 +776,81 @@ const updateColorSchemeInStore = () => {
 
   const scheme = generateCurrentColorScheme()
   colorSchemeStore.setCurrentScheme(scheme)
-  console.log('颜色方案已更新到 Pinia store:', scheme)
-  console.log(`包含 ${scheme.layers.length} 个图层`)
 }
 
-// 组件挂载时输出调试信息
-onMounted(() => {
-  console.log('MapStyle 组件已挂载')
-  console.log('mapRef:', mapRef)
-  console.log('mapRef.value:', mapRef?.value)
+// 生成方案相关状态
+const isGenerating = ref(false)
+const generatedCount = ref(0)
 
+// 是否可以生成方案（当前方案不为空）
+const canGenerate = computed(() => {
+  const scheme = colorSchemeStore.currentScheme
+  return scheme.layers.length > 0
+})
+
+// 生成方案处理函数
+const handleGenerateSchemes = async () => {
+  const currentScheme = colorSchemeStore.currentScheme
+  
+  if (!currentScheme || currentScheme.layers.length === 0) {
+    ElMessage.warning(t('mapStyle.noCurrentScheme'))
+    return
+  }
+
+  isGenerating.value = true
+  generatedCount.value = 0
+
+  try {
+    const response = await schemeApi.generateSchemes({
+      currentScheme,
+      count: 5, // 生成 5 个方案
+    })
+
+    // 将生成的方案（包含 id）保存到 store
+    colorSchemeStore.setColorSchemes(response.schemes)
+    generatedCount.value = response.schemes.length
+
+    ElMessage.success(
+      t('mapStyle.generateSuccess', { count: response.schemes.length })
+    )
+  } catch (error) {
+    console.error('生成方案失败:', error)
+    ElMessage.error(
+      error instanceof Error
+        ? error.message
+        : t('mapStyle.generateError')
+    )
+  } finally {
+    isGenerating.value = false
+  }
+}
+
+// 组件挂载时初始化
+onMounted(() => {
   // 初始化颜色方案到 Pinia store
   updateColorSchemeInStore()
 
-  // 定期检查地图是否加载（更频繁的检查）
+  // 定期检查地图是否加载
   let checkCount = 0
   const checkMap = setInterval(() => {
     checkCount++
     const map = getMap()
     if (map) {
-      console.log(`[${checkCount}] 地图已找到，isStyleLoaded:`, map.isStyleLoaded())
       if (map.isStyleLoaded()) {
         clearInterval(checkMap)
-        console.log('样式已加载，准备列出图层')
         setTimeout(() => {
-          console.log('开始列出图层...')
           listAllLayers()
         }, 1000)
       }
-    } else {
-      if (checkCount <= 5) {
-        console.log(`[${checkCount}] 等待地图实例...`)
-      }
     }
-  }, 200) // 每200ms检查一次，更频繁
+  }, 200) // 每200ms检查一次
 
   // 20秒后停止检查
   setTimeout(() => {
     clearInterval(checkMap)
     const map = getMap()
     if (map) {
-      console.log('超时检查：地图存在，强制列出图层')
       listAllLayers()
-    } else {
-      console.warn('超时检查：地图仍未加载')
     }
   }, 20000)
 })
@@ -996,5 +952,29 @@ onMounted(() => {
   width: 40px;
   height: 32px;
   border-radius: 4px;
+}
+
+.generate-section {
+  padding: 16px;
+  border-top: 1px solid #e4e7ed;
+  background: #fafafa;
+}
+
+.generate-button {
+  width: 100%;
+  height: 40px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.generate-button .el-icon {
+  margin-right: 6px;
+}
+
+.generate-info {
+  margin-top: 8px;
+  text-align: center;
+  font-size: 12px;
+  color: #909399;
 }
 </style>

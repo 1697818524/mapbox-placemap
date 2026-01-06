@@ -1,7 +1,7 @@
 <template>
   <div class="map-info">
     <!-- 搜索组件 -->
-    <MapSearch ref="mapSearchRef" @search-enter="handleSearchEnter" />
+    <MapSearch ref="mapSearchRef" @search-enter="handleSearchEnter" @location-selected="handleLocationSelected" />
 
     <!-- 百度图片搜索结果 -->
     <div class="image-results">
@@ -15,7 +15,7 @@
           v-for="(image, index) in imageResults"
           :key="index"
           class="image-item"
-          @click="openImage(image.url)"
+          @click="openImageViewer(index)"
         >
           <div class="image-wrapper">
             <img
@@ -30,6 +30,16 @@
           </div>
         </div>
       </div>
+      
+      <!-- 图片查看器 -->
+      <ImageViewer
+        v-if="showImageViewer"
+        :images="imageResults"
+        :current-index="currentImageIndex"
+        @close="closeImageViewer"
+        @prev="prevImage"
+        @next="nextImage"
+      />
       <div v-else class="image-empty">
         <span>{{ t('mapInfo.imageSearchPlaceholder') }}</span>
       </div>
@@ -38,14 +48,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, watch, computed } from 'vue'
 import { Loading } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { useI18n } from 'vue-i18n'
 import MapSearch from './MapSearch.vue'
+import ImageViewer from './ImageViewer.vue'
 import { imageApi } from '@/api'
 import { API_CONFIG, IMAGE_CONFIG } from '@/config'
-import type { ImageResult } from '@/types/api'
+import type { ImageResult, GeocodeFeature } from '@/types/api'
 
 const { t } = useI18n()
 
@@ -53,10 +64,13 @@ const mapSearchRef = ref<InstanceType<typeof MapSearch> | null>(null)
 const imageResults = ref<ImageResult[]>([])
 const isLoadingImages = ref(false)
 
-// 处理回车搜索事件
-const handleSearchEnter = async () => {
-  const searchQuery = mapSearchRef.value?.searchQuery
-  if (!searchQuery || searchQuery.trim().length < API_CONFIG.SEARCH_MIN_LENGTH) {
+// 图片查看器相关状态
+const showImageViewer = ref(false)
+const currentImageIndex = ref(0)
+
+// 搜索图片的通用函数
+const searchImages = async (keyword: string) => {
+  if (!keyword || keyword.trim().length < API_CONFIG.SEARCH_MIN_LENGTH) {
     imageResults.value = []
     return
   }
@@ -65,8 +79,7 @@ const handleSearchEnter = async () => {
   imageResults.value = []
 
   try {
-    const imageLabel = t('mapInfo.image')
-    const images = await imageApi.search(searchQuery, IMAGE_CONFIG.GRID_COLUMNS * 3, imageLabel)
+    const images = await imageApi.search(keyword, IMAGE_CONFIG.GRID_COLUMNS * 3)
     imageResults.value = images
   } catch (error) {
     console.error('搜索图片失败:', error)
@@ -76,18 +89,55 @@ const handleSearchEnter = async () => {
   }
 }
 
+// 处理回车搜索事件
+const handleSearchEnter = async () => {
+  const searchQuery = mapSearchRef.value?.searchQuery
+  if (searchQuery) {
+    await searchImages(searchQuery)
+  }
+}
+
+// 处理地点选择事件（点击搜索结果时自动搜索图片）
+const handleLocationSelected = async (location: GeocodeFeature) => {
+  // 使用地点的名称进行图片搜索
+  // 优先使用 place_name（完整地址），如果没有则使用 text（地点名称）
+  const searchKeyword = location.place_name || location.text || ''
+  if (searchKeyword) {
+    await searchImages(searchKeyword)
+  }
+}
+
 // 处理图片加载错误
 const handleImageError = (event: Event) => {
-  console.warn('图片加载失败')
   // 设置默认占位图
   const img = event.target as HTMLImageElement
   img.src =
     'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="150"%3E%3Crect fill="%23ddd" width="200" height="150"/%3E%3Ctext fill="%23999" font-family="sans-serif" font-size="14" x="50%25" y="50%25" text-anchor="middle" dy=".3em"%3E图片加载失败%3C/text%3E%3C/svg%3E'
 }
 
-// 打开图片（在新窗口）
-const openImage = (url: string) => {
-  window.open(url, '_blank')
+// 打开图片查看器
+const openImageViewer = (index: number) => {
+  currentImageIndex.value = index
+  showImageViewer.value = true
+}
+
+// 关闭图片查看器
+const closeImageViewer = () => {
+  showImageViewer.value = false
+}
+
+// 上一张图片
+const prevImage = () => {
+  if (currentImageIndex.value > 0) {
+    currentImageIndex.value--
+  }
+}
+
+// 下一张图片
+const nextImage = () => {
+  if (currentImageIndex.value < imageResults.value.length - 1) {
+    currentImageIndex.value++
+  }
 }
 
 // 监听搜索框变化，清空图片结果

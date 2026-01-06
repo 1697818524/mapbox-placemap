@@ -54,6 +54,7 @@ const mapStore = useMapStore()
 // 定义事件
 const emit = defineEmits<{
   'search-enter': []
+  'location-selected': [location: GeocodeFeature]
 }>()
 
 // 使用地理编码组合式函数
@@ -92,6 +93,8 @@ const handleSelectLocation = (location: GeocodeFeature) => {
   selectLocation(location)
   const [lng, lat] = location.center
   mapStore.setView([lng, lat], 14)
+  // 触发地点选择事件，通知父组件进行图片搜索
+  emit('location-selected', location)
 }
 
 // 监听搜索框清空

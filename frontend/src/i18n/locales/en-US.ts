@@ -57,5 +57,11 @@ export default {
       placeLabel: 'Place Label',
       poiLabel: 'POI Label',
     },
+    generateSchemes: 'Generate Schemes',
+    generating: 'Generating...',
+    generateSuccess: 'Successfully generated {count} schemes',
+    generateError: 'Failed to generate schemes',
+    noCurrentScheme: 'No current style scheme available',
+    generatedCount: 'Generated {count} schemes',
   },
 }

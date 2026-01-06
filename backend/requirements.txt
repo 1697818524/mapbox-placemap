@@ -1,0 +1,21 @@
+# FastAPI related
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+pydantic>=2.0.0
+pydantic-settings>=2.0.0
+
+# HTTP client
+httpx>=0.25.0
+
+# HTML parsing
+beautifulsoup4>=4.12.0
+lxml>=4.9.0
+
+# Image processing
+pillow>=10.0.0
+
+# Numerical computing (for color processing)
+numpy>=1.24.0
+
+# Environment variable management
+python-dotenv>=1.0.0
