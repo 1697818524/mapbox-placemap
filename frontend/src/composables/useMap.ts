@@ -9,7 +9,7 @@ import { useMapStore } from '@/stores'
 
 export function useMap(
   container: Ref<HTMLDivElement | null>,
-  mapRef?: Ref<{ value: mapboxgl.Map | null }>
+  mapRef?: Ref<mapboxgl.Map | null>,
 ) {
   const map = ref<mapboxgl.Map | null>(null)
   const mapStore = useMapStore()
@@ -24,6 +24,11 @@ export function useMap(
     if (!container.value) return
 
     mapboxgl.accessToken = MAPBOX_CONFIG.ACCESS_TOKEN
+    try {
+      mapboxgl.setTelemetryEnabled(false)
+    } catch {
+      /* 忽略旧版本或不支持 */
+    }
 
     map.value = new mapboxgl.Map({
       container: container.value,

@@ -1,16 +1,10 @@
 /**
  * 样式方案生成 API 服务
  */
-import { API_CONFIG } from '@/config'
-import type { ColorScheme } from '@/stores'
+import { API_CONFIG, getApiBaseUrl } from '@/config'
+import type { ColorScheme, ColorSchemeWithId } from '@/stores'
 
-/**
- * 带 ID 的颜色方案
- */
-export interface ColorSchemeWithId extends ColorScheme {
-  /** 方案唯一标识 */
-  id: string
-}
+export type { ColorSchemeWithId }
 
 /**
  * 生成方案请求参数
@@ -20,6 +14,8 @@ export interface GenerateSchemesRequest {
   currentScheme: ColorScheme
   /** 生成方案数量 */
   count: number
+  /** 若存在，后端优先用该任务的聚类调色板生成方案 */
+  jobId?: string | null
 }
 
 /**
@@ -42,12 +38,10 @@ export const schemeApi = {
   generateSchemes: async (
     request: GenerateSchemesRequest
   ): Promise<GenerateSchemesResponse> => {
-    const { currentScheme, count } = request
+    const { currentScheme, count, jobId } = request
 
     try {
-      // TODO: 替换为实际的后端 API 地址
-      const backendUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
-      const url = `${backendUrl}/api/schemes/generate`
+      const url = `${getApiBaseUrl()}/api/schemes/generate`
 
       const controller = new AbortController()
       const timeoutId = setTimeout(() => controller.abort(), API_CONFIG.TIMEOUT * 3)
@@ -60,6 +54,7 @@ export const schemeApi = {
         body: JSON.stringify({
           currentScheme,
           count,
+          ...(jobId ? { job_id: jobId } : {}),
         }),
         signal: controller.signal,
       })

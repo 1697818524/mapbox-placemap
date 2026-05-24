@@ -2,6 +2,10 @@
   <div class="navbar">
     <div class="nav-left">
       <img class="logo" :src="logoImg" alt="PlaceMap Generator" />
+      <nav class="nav-links">
+        <router-link to="/" class="nav-link">{{ t('nav.home') }}</router-link>
+        <router-link to="/generate" class="nav-link">{{ t('nav.schemeGenerate') }}</router-link>
+      </nav>
     </div>
 
     <div class="nav-center">
@@ -62,7 +66,32 @@ const handleLocaleChange = (value: string) => {
   flex: 1;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 16px;
+}
+
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.nav-link {
+  padding: 6px 12px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #374151;
+  text-decoration: none;
+  border-radius: 6px;
+}
+
+.nav-link:hover {
+  color: #1f2937;
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.nav-link.router-link-active {
+  color: #4264fb;
+  background: rgba(66, 100, 251, 0.1);
 }
 
 .logo {

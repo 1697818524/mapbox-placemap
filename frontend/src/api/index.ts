@@ -4,3 +4,4 @@
 export * from './mapbox'
 export * from './image'
 export * from './scheme'
+export * from './pipeline'

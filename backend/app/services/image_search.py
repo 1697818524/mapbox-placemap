@@ -1,59 +1,139 @@
 """
-图片搜索服务（百度图片搜索 JSON API）
+图片搜索服务：优先百度图片 JSON API；无结果时用 Wikimedia Commons（全球可访问）兜底。
 """
 import json
+import re
+from typing import Any, List, Optional, Tuple
+
 import httpx
-from typing import List
+
 from app.models.image import ImageResult
 
 
 class ImageSearchService:
-    """图片搜索服务（百度图片搜索）"""
+    """图片搜索服务"""
+
+    _RASTER_SUFFIXES = (".jpg", ".jpeg", ".png", ".gif", ".webp", ".tif", ".tiff", ".bmp")
+    _MIDDLE_URL_RE = re.compile(r'"middleURL"\s*:\s*"((?:[^"\\]|\\.)*)"')
 
     def __init__(self):
-        """初始化图片搜索服务"""
         self.user_agent = (
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
             "AppleWebKit/537.36 (KHTML, like Gecko) "
             "Chrome/122.0.0.0 Safari/537.36"
         )
         self.timeout = 15
+        self.commons_timeout = 30.0
+        self.commons_user_agent = (
+            "PlaceSenseMap/1.0 (mapbox-placemap; Wikimedia Commons image search fallback; "
+            "+https://wikimediafoundation.org/) httpx"
+        )
+
+    @staticmethod
+    def _normalize_media_url(raw: Any) -> Optional[str]:
+        if not isinstance(raw, str):
+            return None
+        u = raw.strip()
+        if not u:
+            return None
+        if u.startswith("//"):
+            u = "https:" + u
+        if u.startswith("http://") or u.startswith("https://"):
+            return u
+        return None
+
+    def _pick_baidu_urls(self, item: dict) -> Tuple[Optional[str], Optional[str]]:
+        """从百度单条记录解析主图与缩略图 URL。"""
+        full_candidates: List[str] = []
+        thumb_candidates: List[str] = []
+
+        def push(raw: Any, as_thumb: bool) -> None:
+            u = self._normalize_media_url(raw)
+            if not u:
+                return
+            if as_thumb:
+                thumb_candidates.append(u)
+            else:
+                full_candidates.append(u)
+
+        for key in ("middleURL", "objURL", "hoverURL"):
+            push(item.get(key), False)
+        push(item.get("thumbURL"), True)
+
+        replace_url = item.get("replaceUrl")
+        if isinstance(replace_url, list):
+            for chunk in replace_url:
+                if isinstance(chunk, dict):
+                    push(chunk.get("ObjURL"), False)
+                    push(chunk.get("ObjEncodeUrl"), False)
+
+        img_url = full_candidates[0] if full_candidates else None
+        thumb_url = thumb_candidates[0] if thumb_candidates else None
+        if not img_url and thumb_url:
+            img_url = thumb_url
+        if not thumb_url and img_url:
+            thumb_url = img_url
+        return img_url, thumb_url
+
+    @staticmethod
+    def _baidu_unescape_url_fragment(frag: str) -> str:
+        """解析百度 JSON 字符串片段中的 URL（不要求整个响应可 json.loads）。"""
+        try:
+            return json.loads(f'"{frag}"')
+        except json.JSONDecodeError:
+            return frag.replace("\\/", "/").replace('\\"', '"').replace("\\\\", "\\")
+
+    def _baidu_extract_urls_regex(self, raw: str, count: int) -> List[ImageResult]:
+        """百度返回含非法转义 JSON 时，从原文中提取 middleURL。"""
+        images: List[ImageResult] = []
+        for m in self._MIDDLE_URL_RE.finditer(raw):
+            if len(images) >= count:
+                break
+            frag = m.group(1)
+            url = self._normalize_media_url(self._baidu_unescape_url_fragment(frag))
+            if not url:
+                continue
+            try:
+                images.append(ImageResult(url=url, thumbnail=url, title=None, width=None, height=None))
+            except Exception:
+                continue
+        if images:
+            print(f"[图片搜索] 正则兜底提取百度 middleURL {len(images)} 条")
+        return images
 
     async def search(self, keyword: str, count: int = 9) -> List[ImageResult]:
-        """
-        搜索图片
-
-        Args:
-            keyword: 搜索关键词（地点名称）
-            count: 返回图片数量（最多50张）
-
-        Returns:
-            图片搜索结果列表
-        """
         if not keyword or not keyword.strip():
             return []
 
-        # 限制返回数量
         count = min(count, 50)
 
+        print(f"\n{'='*60}")
+        print("[图片搜索] 开始搜索")
+        print(f"[图片搜索] 关键词: {keyword}")
+        print(f"[图片搜索] 请求数量: {count}")
+
+        baidu = await self._search_baidu(keyword, count)
+        if baidu:
+            print(f"[图片搜索] 百度返回 {len(baidu)} 张，直接使用")
+            print(f"[图片搜索] {'='*60}\n")
+            return baidu
+
+        print("[图片搜索] 百度无可用图片，尝试 Wikimedia Commons 兜底…")
+        commons = await self._search_wikimedia_commons(keyword.strip(), count)
+        print(f"[图片搜索] Commons 返回 {len(commons)} 张")
+        print(f"[图片搜索] {'='*60}\n")
+        return commons
+
+    async def _search_baidu(self, keyword: str, count: int) -> List[ImageResult]:
+        if self._is_english(keyword):
+            search_word = f"{keyword} scenery"
+        else:
+            search_word = f"{keyword} 风景"
+
+        print(f"[图片搜索] 百度搜索词: {search_word}")
+
         try:
-            print(f"\n{'='*60}")
-            print(f"[图片搜索] 开始搜索")
-            print(f"[图片搜索] 关键词: {keyword}")
-            print(f"[图片搜索] 请求数量: {count}")
-
-            # 构建搜索词：地点 + 风景（英文：location + scenery）
-            if self._is_english(keyword):
-                search_word = f"{keyword} scenery"
-            else:
-                search_word = f"{keyword} 风景"
-
-            print(f"[图片搜索] 搜索词: {search_word}")
-
-            # 创建 HTTP 客户端（使用 session 保持 cookie）
             async with httpx.AsyncClient(timeout=self.timeout, follow_redirects=True) as client:
-                # 关键：先访问一次主页，让 session 带上 BAIDUID 等 cookie
-                print(f"[图片搜索] 访问主页获取 Cookie...")
                 headers_home = {
                     "User-Agent": self.user_agent,
                     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
@@ -61,7 +141,6 @@ class ImageSearchService:
                 }
                 await client.get("https://image.baidu.com/", headers=headers_home)
 
-                # 构建 JSON API 请求参数
                 api_url = "https://image.baidu.com/search/acjson"
                 params = {
                     "tn": "resultjson_com",
@@ -78,8 +157,6 @@ class ImageSearchService:
                     "pn": 0,
                     "rn": count,
                 }
-
-                # 发送 JSON API 请求
                 headers_api = {
                     "User-Agent": self.user_agent,
                     "Referer": "https://image.baidu.com/",
@@ -89,142 +166,172 @@ class ImageSearchService:
                     "X-Requested-With": "XMLHttpRequest",
                 }
 
-                print(f"[图片搜索] 发送 API 请求...")
-                print(f"[图片搜索] URL: {api_url}")
-                print(f"[图片搜索] 参数: {params}")
-
                 response = await client.get(api_url, params=params, headers=headers_api)
                 response.raise_for_status()
 
-                print(f"[图片搜索] HTTP响应状态码: {response.status_code}")
-                print(f"[图片搜索] 响应内容长度: {len(response.text)} 字符")
-
-                # 百度有时会返回"非标准 JSON"（前后夹杂字符），需要容错处理
                 text = response.text
+                data: Optional[dict] = None
                 try:
-                    data = response.json()
+                    parsed = response.json()
+                    data = parsed if isinstance(parsed, dict) else None
                 except Exception:
-                    print(f"[图片搜索] JSON解析失败，尝试提取JSON部分...")
-                    # 查找第一个 { 和最后一个 }
+                    data = None
+
+                if data is None:
                     start = text.find("{")
                     end = text.rfind("}")
                     if start >= 0 and end > start:
-                        json_text = text[start:end + 1]
-                        data = json.loads(json_text)
-                        print(f"[图片搜索] ✓ 成功提取JSON部分")
-                    else:
-                        print(f"[图片搜索] ✗ 无法找到有效的JSON部分")
-                        print(f"[图片搜索] 响应前500字符: {text[:500]}")
-                        return []
+                        chunk = text[start : end + 1]
+                        try:
+                            loaded = json.loads(chunk)
+                            data = loaded if isinstance(loaded, dict) else None
+                        except json.JSONDecodeError:
+                            print("[图片搜索] 百度 JSON 含非法转义，跳过完整解析")
+                            data = None
 
-                # 提取可直连的图片 URL
-                print(f"[图片搜索] 解析返回数据...")
-                print(f"[图片搜索] 返回字段: {list(data.keys())}")
+                if data is None:
+                    return self._baidu_extract_urls_regex(text, count)
 
-                data_list = data.get("data", [])
-                print(f"[图片搜索] data数组长度: {len(data_list)}")
-
+                data_list = data.get("data") or []
                 if not data_list:
-                    print(f"[图片搜索] ⚠️  返回的data数组为空")
-                    print(f"[图片搜索] 完整响应: {json.dumps(data, ensure_ascii=False, indent=2)[:1000]}")
+                    print(f"[图片搜索] 百度 data 为空 keys={list(data.keys())}，尝试正则提取")
+                    reg = self._baidu_extract_urls_regex(text, count)
+                    if reg:
+                        return reg
                     return []
 
-                # 提取图片 URL（优先级：middleURL > thumbURL > hoverURL）
-                images = []
+                images: List[ImageResult] = []
                 for item in data_list:
                     if not isinstance(item, dict):
                         continue
 
-                    # 尝试多个字段获取图片 URL（优先级顺序）
-                    img_url = None
-                    thumbnail_url = None
-                    for key in ("middleURL", "thumbURL", "hoverURL"):
-                        url = item.get(key)
-                        if isinstance(url, str) and url.startswith("http"):
-                            if not img_url:
-                                img_url = url
-                            if key == "thumbURL" and not thumbnail_url:
-                                thumbnail_url = url
-                            if img_url and thumbnail_url:
-                                break
-
+                    img_url, thumbnail_url = self._pick_baidu_urls(item)
                     if not img_url:
                         continue
 
-                    # 获取图片标题和尺寸信息
                     title = item.get("fromPageTitle") or item.get("title") or item.get("keyword")
                     width = item.get("width")
                     height = item.get("height")
 
-                    # 创建图片结果
                     try:
-                        image_result = ImageResult(
-                            url=img_url,
-                            thumbnail=thumbnail_url if thumbnail_url else None,
-                            title=title,
-                            width=width,
-                            height=height,
+                        images.append(
+                            ImageResult(
+                                url=img_url,
+                                thumbnail=thumbnail_url,
+                                title=str(title)[:500] if title else None,
+                                width=int(width) if isinstance(width, (int, float)) else None,
+                                height=int(height) if isinstance(height, (int, float)) else None,
+                            )
                         )
-                        images.append(image_result)
                     except Exception as e:
-                        print(f"[图片搜索] ⚠️  创建图片结果失败，跳过: {e}, URL: {img_url[:80]}")
+                        print(f"[图片搜索] 跳过无效百度条目: {e}")
                         continue
 
                     if len(images) >= count:
                         break
 
-                print(f"[图片搜索] ✓ 成功提取 {len(images)} 张图片")
-
-                # 最终结果汇总
-                print(f"[图片搜索] {'='*60}")
-                print(f"[图片搜索] 解析完成: 找到 {len(images)} 张图片")
-
-                if images:
-                    print(f"[图片搜索] ✓ 成功获取图片列表 (显示前5张):")
-                    for idx, img in enumerate(images[:5], 1):
-                        print(f"  [{idx}] URL: {img.url}")
-                        if img.title:
-                            print(f"      标题: {img.title}")
-                        if img.width and img.height:
-                            print(f"      尺寸: {img.width}x{img.height}")
-                else:
-                    print(f"[图片搜索] ✗ 未找到任何图片")
-
-                print(f"[图片搜索] {'='*60}\n")
-
                 return images
 
         except httpx.TimeoutException:
-            print(f"[图片搜索] ✗ 搜索图片超时: {keyword}")
+            print(f"[图片搜索] 百度请求超时: {keyword}")
             return []
         except httpx.HTTPError as e:
-            print(f"[图片搜索] ✗ 搜索图片HTTP错误: {e}")
+            print(f"[图片搜索] 百度 HTTP 错误: {e}")
             return []
         except Exception as e:
-            print(f"[图片搜索] ✗ 搜索图片失败: {e}")
+            print(f"[图片搜索] 百度解析异常: {e!r}")
             import traceback
+
             traceback.print_exc()
             return []
 
+    def _commons_is_raster(self, title: str) -> bool:
+        t = title.lower()
+        if ":" in t:
+            t = t.split(":", 1)[-1]
+        return any(t.endswith(ext) for ext in self._RASTER_SUFFIXES)
+
+    async def _search_wikimedia_commons(self, keyword: str, count: int) -> List[ImageResult]:
+        """Wikimedia Commons：无需 Key，适合百度不可用时的兜底。"""
+        api = "https://commons.wikimedia.org/w/api.php"
+        params = {
+            "action": "query",
+            "format": "json",
+            "generator": "search",
+            "gsrsearch": keyword,
+            "gsrnamespace": "6",
+            "gsrlimit": str(min(max(count, 10), 50)),
+            "prop": "imageinfo",
+            "iiprop": "url|thumburl|dimensions",
+            "iiurlwidth": "480",
+        }
+        try:
+            async with httpx.AsyncClient(
+                timeout=self.commons_timeout, follow_redirects=True
+            ) as client:
+                r = await client.get(
+                    api,
+                    params=params,
+                    headers={
+                        "User-Agent": self.commons_user_agent,
+                        "Accept": "application/json",
+                        "Api-User-Agent": self.commons_user_agent,
+                    },
+                )
+                r.raise_for_status()
+                body = r.json()
+        except Exception as e:
+            print(f"[图片搜索] Commons 请求失败: {type(e).__name__} {e!r}")
+            return []
+
+        pages = (body.get("query") or {}).get("pages") or {}
+        if not pages:
+            print("[图片搜索] Commons query.pages 为空")
+            return []
+
+        out: List[ImageResult] = []
+        for _pid, page in pages.items():
+            if not isinstance(page, dict):
+                continue
+            title = page.get("title") or ""
+            if not self._commons_is_raster(str(title)):
+                continue
+            infos = page.get("imageinfo")
+            if not isinstance(infos, list) or not infos:
+                continue
+            info = infos[0]
+            if not isinstance(info, dict):
+                continue
+            url = self._normalize_media_url(info.get("url"))
+            thumb = self._normalize_media_url(info.get("thumburl"))
+            if not url:
+                continue
+            if not thumb:
+                thumb = url
+            w = info.get("width")
+            h = info.get("height")
+            try:
+                out.append(
+                    ImageResult(
+                        url=url,
+                        thumbnail=thumb,
+                        title=str(title).replace("File:", "")[:500],
+                        width=int(w) if isinstance(w, (int, float)) else None,
+                        height=int(h) if isinstance(h, (int, float)) else None,
+                    )
+                )
+            except Exception:
+                continue
+            if len(out) >= count:
+                break
+
+        return out
+
     def _is_english(self, text: str) -> bool:
-        """
-        判断文本是否主要是英文
-
-        Args:
-            text: 待判断的文本
-
-        Returns:
-            如果主要是英文返回True，否则返回False
-        """
         if not text:
             return False
-
-        # 统计英文字符数量
         english_chars = sum(1 for c in text if c.isascii() and c.isalpha())
         total_chars = sum(1 for c in text if c.isalpha())
-
         if total_chars == 0:
             return False
-
-        # 如果英文字符占比超过50%，认为是英文
         return english_chars / total_chars > 0.5

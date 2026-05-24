@@ -9,6 +9,23 @@ export default {
   nav: {
     home: 'Home',
     about: 'About',
+    schemeGenerate: 'Schemes',
+  },
+  generatePage: {
+    prevScheme: 'Previous',
+    nextScheme: 'Next',
+    schemeCounter: '{current} / {total}',
+    backHome: 'Back to Home',
+    scoresTitle: 'Objective scores',
+    scoresNoScheme: 'No scheme selected. Build the sample set on Home or click Generate.',
+    scoresNoMetrics:
+      'No metrics on this scheme (common for rule-based output). Enable GA in the pipeline for harmony / place scores.',
+    scoreHarmony: 'Color harmony (f1)',
+    scorePlace: 'Place representativeness (f2)',
+    scoreSemanticFit: 'Semantic fit',
+    scoreReadability: 'Readability',
+    scoreDiversity: 'Diversity',
+    schemeId: 'Scheme id',
   },
   navbar: {
     title: 'Sense of Place Map Generator',
@@ -19,6 +36,15 @@ export default {
     name: 'Name',
     coordinates: 'Coordinates',
     relatedImages: 'Related Images',
+    batchCount: 'Batch: {n} / {max} images',
+    selectAllSearch: 'Select all search results',
+    clearSearchSelection: 'Clear selection',
+    localUpload: 'Upload from device',
+    chooseFiles: 'Choose files',
+    uploadHint: 'Pick images from search results and/or upload files (up to {max} total)',
+    noImagesSelected:
+      'Select images from search results and/or upload files (at least 1, up to {max} total)',
+    batchMaxReached: 'At most {max} images per batch',
     loadingImages: 'Loading images...',
     image: 'Image',
     imageSearchPlaceholder:
@@ -26,6 +52,25 @@ export default {
     imageSearchError: 'Failed to search images, please try again later',
     imageSearchFailed: 'Failed to search images',
     imageLoadFailed: 'Image failed to load',
+    runPipeline: 'Build sample set',
+    runPipelineDisabled:
+      'Search a place, select images from results and/or uploads (1-20 total), then click here.',
+    pipelineFailed: 'Sample set build failed: {msg}',
+    pipelineSuccess:
+      'Sample set is ready (color pipeline finished). Adjust colors on the right on Home, then click Generate to open the scheme studio.',
+    pipelineStarting: 'Building sample set…',
+    pipelineSaving: 'Saving images on server…',
+    pipelineProgress: '{stage} · {progress}%',
+    stages: {
+      queued: 'Queued',
+      running: 'Running',
+      ingest: 'Ingest',
+      shadow: 'Shadow removal',
+      semantic: 'Semantic segmentation',
+      superpixel: 'Superpixels & fusion',
+      cluster: 'Palette clustering',
+      scheme: 'Scheme generation',
+    },
   },
   mapStyle: {
     title: 'Map Style Configuration',
@@ -62,6 +107,21 @@ export default {
     generateSuccess: 'Successfully generated {count} schemes',
     generateError: 'Failed to generate schemes',
     noCurrentScheme: 'No current style scheme available',
+    generateBlockedNeedPipeline:
+      'Finish building the sample set (color pipeline) and ensure palette candidates exist (cluster CSVs) before generating schemes.',
     generatedCount: 'Generated {count} schemes',
+    candidateSchemes: 'Candidate schemes',
+    schemeOption: 'Scheme {n}',
+    colorHexLabel: 'HEX',
+    layerIdLabel: 'Layer id',
+    semanticsUnknown: '—',
+    semantics: {
+      architecture: 'Architecture',
+      roadnet: 'Road network',
+      green: 'Green / land',
+      landmark: 'Landmark',
+      water: 'Water',
+    },
+    galleryEmpty: 'No schemes yet. Generate from Home or use Generate at the top of this page.',
   },
 }

@@ -31,9 +31,10 @@
         <div class="viewer-content">
           <div class="viewer-image-wrapper">
             <img
-              :src="currentImage.url"
+              :src="getImageProxyUrl(currentImage.url)"
               :alt="currentImage.title || 'Image'"
               class="viewer-image"
+              referrerpolicy="no-referrer"
               @load="handleImageLoad"
               @error="handleImageError"
             />
@@ -60,7 +61,11 @@
             :class="{ active: index === currentIndex }"
             @click="goToImage(index)"
           >
-            <img :src="image.thumbnail || image.url" :alt="`Thumbnail ${index + 1}`" />
+            <img
+              :src="getImageProxyUrl(image.thumbnail || image.url)"
+              :alt="`Thumbnail ${index + 1}`"
+              referrerpolicy="no-referrer"
+            />
           </div>
         </div>
       </div>
@@ -71,6 +76,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { Close, ArrowLeft, ArrowRight, Loading } from '@element-plus/icons-vue'
+import { getImageProxyUrl } from '@/api'
 import type { ImageResult } from '@/types/api'
 
 interface Props {

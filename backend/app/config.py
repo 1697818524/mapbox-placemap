@@ -2,6 +2,7 @@
 应用配置模块
 """
 import os
+import sys
 from typing import List
 from pydantic_settings import BaseSettings
 
@@ -21,6 +22,23 @@ class Settings(BaseSettings):
         "http://127.0.0.1:3000",
         "http://127.0.0.1:5173",
     ]
+
+    # 图片处理配置
+    REQUEST_TIMEOUT: int = 15
+    USER_AGENT: str = (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/122.0.0.0 Safari/537.36"
+    )
+    MAX_IMAGE_SIZE: int = 2048
+
+    # 外部脚本配置（Day3）
+    PIPELINE_PYTHON_EXE: str = r"E:\conda\python.exe"
+    SHADOW_SCRIPT_PATH: str = r"e:\code\code.py"
+    ONEFORMER_SCRIPT_PATH: str = r"e:\code\OneFormer\hf_cityscapes_one_image_semantic.py"
+    ONEFORMER_MODEL_DIR: str = r"e:\code\models\oneformer_cityscapes_swin_large"
+    ONEFORMER_LOCAL_FILES_ONLY: bool = True
+    ONEFORMER_DEVICE: str = "cuda"
 
 
     class Config:

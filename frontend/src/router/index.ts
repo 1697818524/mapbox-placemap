@@ -7,6 +7,11 @@ const routes: RouteRecordRaw[] = [
     name: 'Home',
     component: () => import('@/views/Home.vue'),
   },
+  {
+    path: '/generate',
+    name: 'SchemeGenerate',
+    component: () => import('@/views/SchemeGenerate.vue'),
+  },
 ]
 
 const router = createRouter({

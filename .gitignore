@@ -47,6 +47,9 @@ ENV/
 # 日志
 *.log
 
+# Runtime pipeline artifacts
+backend/data/
+
 # 操作系统
 .DS_Store
 Thumbs.db

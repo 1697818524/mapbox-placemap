@@ -9,6 +9,7 @@ import App from './App.vue'
 import router from './router'
 import i18n from './i18n'
 import './styles/main.css'
+import 'mapbox-gl/dist/mapbox-gl.css'
 
 const app = createApp(App)
 

@@ -28,4 +28,8 @@ export const IMAGE_CONFIG = {
   THUMBNAIL_HEIGHT: 150,
   FULL_WIDTH: 400,
   FULL_HEIGHT: 300,
+  /** 构建样本集：搜索结果勾选 + 本地上传合计上限 */
+  BATCH_MAX: 20,
+  /** 搜索多返回一些供勾选（不超过后端 search count 上限 50） */
+  SEARCH_POOL_COUNT: 36,
 } as const

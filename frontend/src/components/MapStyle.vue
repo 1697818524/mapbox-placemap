@@ -8,23 +8,36 @@
     </div>
 
     <el-scrollbar class="style-content">
-      <el-collapse v-model="activeCategories" class="category-section">
-        <!-- 水体类别 -->
+      <el-collapse v-model="activeCategories" class="category-section studio-collapse">
+        <!-- 水体（图层 id 与样式一致，未改列表） -->
         <el-collapse-item name="water" :title="t('mapStyle.water')">
           <div class="layer-list">
-            <div v-for="layer in waterLayers" :key="layer.id" class="layer-item">
-              <div class="layer-info">
-                <span class="layer-name">{{ getLayerName(layer.nameKey) }}</span>
+            <div v-for="layer in waterLayers" :key="layer.id" class="studio-layer-row">
+              <div class="studio-layer-main">
+                <div class="studio-layer-title-row">
+                  <span class="studio-layer-name">{{ getLayerName(layer.nameKey) }}</span>
+                  <span class="studio-paint-key">{{ layer.paintProperty }}</span>
+                </div>
+                <div class="studio-layer-id">{{ layer.id }}</div>
+                <div class="studio-layer-meta">
+                  <span class="studio-hex">{{ layerHexLine(layer) }}</span>
+                  <template v-if="layerSemanticLine(layer)">
+                    <span class="studio-meta-sep">·</span>
+                    <span>{{ layerSemanticLine(layer) }}</span>
+                  </template>
+                </div>
               </div>
-              <div class="color-control">
+              <div class="studio-color-actions">
                 <el-color-picker
                   v-model="layerColors[layer.id]"
                   :predefine="predefineColors"
+                  size="small"
                   @change="color => updateLayerColor(layer.id, color, layer.paintProperty)"
                 />
                 <el-button
                   size="small"
                   text
+                  class="studio-reset-btn"
                   @click="resetLayerColor(layer.id, layer.defaultColor, layer.paintProperty)"
                 >
                   {{ t('mapStyle.reset') }}
@@ -34,22 +47,34 @@
           </div>
         </el-collapse-item>
 
-        <!-- 道路类别 -->
         <el-collapse-item name="roads" :title="t('mapStyle.roads')">
           <div class="layer-list">
-            <div v-for="layer in roadLayers" :key="layer.id" class="layer-item">
-              <div class="layer-info">
-                <span class="layer-name">{{ getLayerName(layer.nameKey) }}</span>
+            <div v-for="layer in roadLayers" :key="layer.id" class="studio-layer-row">
+              <div class="studio-layer-main">
+                <div class="studio-layer-title-row">
+                  <span class="studio-layer-name">{{ getLayerName(layer.nameKey) }}</span>
+                  <span class="studio-paint-key">{{ layer.paintProperty }}</span>
+                </div>
+                <div class="studio-layer-id">{{ layer.id }}</div>
+                <div class="studio-layer-meta">
+                  <span class="studio-hex">{{ layerHexLine(layer) }}</span>
+                  <template v-if="layerSemanticLine(layer)">
+                    <span class="studio-meta-sep">·</span>
+                    <span>{{ layerSemanticLine(layer) }}</span>
+                  </template>
+                </div>
               </div>
-              <div class="color-control">
+              <div class="studio-color-actions">
                 <el-color-picker
                   v-model="layerColors[layer.id]"
                   :predefine="predefineColors"
+                  size="small"
                   @change="color => updateLayerColor(layer.id, color, layer.paintProperty)"
                 />
                 <el-button
                   size="small"
                   text
+                  class="studio-reset-btn"
                   @click="resetLayerColor(layer.id, layer.defaultColor, layer.paintProperty)"
                 >
                   {{ t('mapStyle.reset') }}
@@ -59,22 +84,34 @@
           </div>
         </el-collapse-item>
 
-        <!-- 建筑类别 -->
         <el-collapse-item name="buildings" :title="t('mapStyle.buildings')">
           <div class="layer-list">
-            <div v-for="layer in buildingLayers" :key="layer.id" class="layer-item">
-              <div class="layer-info">
-                <span class="layer-name">{{ getLayerName(layer.nameKey) }}</span>
+            <div v-for="layer in buildingLayers" :key="layer.id" class="studio-layer-row">
+              <div class="studio-layer-main">
+                <div class="studio-layer-title-row">
+                  <span class="studio-layer-name">{{ getLayerName(layer.nameKey) }}</span>
+                  <span class="studio-paint-key">{{ layer.paintProperty }}</span>
+                </div>
+                <div class="studio-layer-id">{{ layer.id }}</div>
+                <div class="studio-layer-meta">
+                  <span class="studio-hex">{{ layerHexLine(layer) }}</span>
+                  <template v-if="layerSemanticLine(layer)">
+                    <span class="studio-meta-sep">·</span>
+                    <span>{{ layerSemanticLine(layer) }}</span>
+                  </template>
+                </div>
               </div>
-              <div class="color-control">
+              <div class="studio-color-actions">
                 <el-color-picker
                   v-model="layerColors[layer.id]"
                   :predefine="predefineColors"
+                  size="small"
                   @change="color => updateLayerColor(layer.id, color, layer.paintProperty)"
                 />
                 <el-button
                   size="small"
                   text
+                  class="studio-reset-btn"
                   @click="resetLayerColor(layer.id, layer.defaultColor, layer.paintProperty)"
                 >
                   {{ t('mapStyle.reset') }}
@@ -84,22 +121,34 @@
           </div>
         </el-collapse-item>
 
-        <!-- 绿地/土地类别 -->
         <el-collapse-item name="green" :title="t('mapStyle.green')">
           <div class="layer-list">
-            <div v-for="layer in greenLayers" :key="layer.id" class="layer-item">
-              <div class="layer-info">
-                <span class="layer-name">{{ getLayerName(layer.nameKey) }}</span>
+            <div v-for="layer in greenLayers" :key="layer.id" class="studio-layer-row">
+              <div class="studio-layer-main">
+                <div class="studio-layer-title-row">
+                  <span class="studio-layer-name">{{ getLayerName(layer.nameKey) }}</span>
+                  <span class="studio-paint-key">{{ layer.paintProperty }}</span>
+                </div>
+                <div class="studio-layer-id">{{ layer.id }}</div>
+                <div class="studio-layer-meta">
+                  <span class="studio-hex">{{ layerHexLine(layer) }}</span>
+                  <template v-if="layerSemanticLine(layer)">
+                    <span class="studio-meta-sep">·</span>
+                    <span>{{ layerSemanticLine(layer) }}</span>
+                  </template>
+                </div>
               </div>
-              <div class="color-control">
+              <div class="studio-color-actions">
                 <el-color-picker
                   v-model="layerColors[layer.id]"
                   :predefine="predefineColors"
+                  size="small"
                   @change="color => updateLayerColor(layer.id, color, layer.paintProperty)"
                 />
                 <el-button
                   size="small"
                   text
+                  class="studio-reset-btn"
                   @click="resetLayerColor(layer.id, layer.defaultColor, layer.paintProperty)"
                 >
                   {{ t('mapStyle.reset') }}
@@ -109,22 +158,34 @@
           </div>
         </el-collapse-item>
 
-        <!-- 注记类别 -->
         <el-collapse-item name="labels" :title="t('mapStyle.labels')">
           <div class="layer-list">
-            <div v-for="layer in labelLayers" :key="layer.id" class="layer-item">
-              <div class="layer-info">
-                <span class="layer-name">{{ getLayerName(layer.nameKey) }}</span>
+            <div v-for="layer in labelLayers" :key="layer.id" class="studio-layer-row">
+              <div class="studio-layer-main">
+                <div class="studio-layer-title-row">
+                  <span class="studio-layer-name">{{ getLayerName(layer.nameKey) }}</span>
+                  <span class="studio-paint-key">{{ layer.paintProperty }}</span>
+                </div>
+                <div class="studio-layer-id">{{ layer.id }}</div>
+                <div class="studio-layer-meta">
+                  <span class="studio-hex">{{ layerHexLine(layer) }}</span>
+                  <template v-if="layerSemanticLine(layer)">
+                    <span class="studio-meta-sep">·</span>
+                    <span>{{ layerSemanticLine(layer) }}</span>
+                  </template>
+                </div>
               </div>
-              <div class="color-control">
+              <div class="studio-color-actions">
                 <el-color-picker
                   v-model="layerColors[layer.id]"
                   :predefine="predefineColors"
+                  size="small"
                   @change="color => updateLayerColor(layer.id, color, layer.paintProperty)"
                 />
                 <el-button
                   size="small"
                   text
+                  class="studio-reset-btn"
                   @click="resetLayerColor(layer.id, layer.defaultColor, layer.paintProperty)"
                 >
                   {{ t('mapStyle.reset') }}
@@ -136,47 +197,165 @@
       </el-collapse>
     </el-scrollbar>
 
-    <!-- 生成方案按钮区域 -->
-    <div class="generate-section">
-      <el-button
-        type="primary"
-        :loading="isGenerating"
-        :disabled="!canGenerate"
-        @click="handleGenerateSchemes"
-        class="generate-button"
-      >
-        <el-icon v-if="!isGenerating"><MagicStick /></el-icon>
-        {{ isGenerating ? t('mapStyle.generating') : t('mapStyle.generateSchemes') }}
-      </el-button>
-      <div v-if="generatedCount > 0" class="generate-info">
-        {{ t('mapStyle.generatedCount', { count: generatedCount }) }}
-      </div>
+    <!-- 首页：生成多套方案并跳转工作室 -->
+    <div v-if="footerMode === 'generate'" class="generate-section">
+      <el-tooltip :content="generateBlockedReason" placement="top" :disabled="canGenerate">
+        <span class="generate-btn-wrap">
+          <el-button
+            type="primary"
+            :loading="isGenerating"
+            :disabled="!canGenerate"
+            class="generate-button"
+            @click="handleGenerateSchemes"
+          >
+            <el-icon v-if="!isGenerating"><MagicStick /></el-icon>
+            {{ isGenerating ? t('mapStyle.generating') : t('mapStyle.generateSchemes') }}
+          </el-button>
+        </span>
+      </el-tooltip>
+    </div>
+
+    <!-- 方案页：左右切换候选方案 -->
+    <div v-else class="generate-section gallery-footer">
+      <template v-if="colorSchemes.length === 0">
+        <p class="gallery-hint">{{ t('mapStyle.galleryEmpty') }}</p>
+      </template>
+      <template v-else>
+        <div class="gallery-row">
+          <el-button
+            size="small"
+            class="gallery-btn"
+            :disabled="!canGalleryPrev"
+            @click="galleryPrev"
+          >
+            {{ t('generatePage.prevScheme') }}
+          </el-button>
+          <span class="gallery-counter">{{ galleryCounter }}</span>
+          <el-button
+            size="small"
+            class="gallery-btn"
+            :disabled="!canGalleryNext"
+            @click="galleryNext"
+          >
+            {{ t('generatePage.nextScheme') }}
+          </el-button>
+        </div>
+      </template>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, watch, onMounted, inject, computed } from 'vue'
+import { ref, reactive, watch, onMounted, inject, computed, type Ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { MagicStick } from '@element-plus/icons-vue'
 import { useI18n } from 'vue-i18n'
+import { storeToRefs } from 'pinia'
 import type mapboxgl from 'mapbox-gl'
+import { semanticForLayerId } from '@/config/placemapSemantics'
+import {
+  waterLayers,
+  roadLayers,
+  buildingLayers,
+  greenLayers,
+  labelLayers,
+  getAllConfigurableLayers,
+  type LayerConfig,
+} from '@/config/mapStyleLayers'
 import { useColorSchemeStore, type ColorScheme, type ColorSchemeItem } from '@/stores'
-import { schemeApi, type ColorSchemeWithId } from '@/api/scheme'
+import { schemeApi } from '@/api/scheme'
+
+const props = withDefaults(
+  defineProps<{
+    /** generate：首页调用接口并跳转 /generate；gallery：仅上一/下一方案 */
+    footerMode?: 'generate' | 'gallery'
+  }>(),
+  { footerMode: 'generate' },
+)
 
 const { t } = useI18n()
+const router = useRouter()
 
-type MapRef = { value: mapboxgl.Map | null }
-
-const injected = inject<MapRef>('mapInstance', { value: null })
-const mapRef = injected
+const mapInstanceRef = inject<Ref<mapboxgl.Map | null>>('mapInstance')
+if (!mapInstanceRef) {
+  throw new Error('mapInstance not provided')
+}
 
 // Pinia store
 const colorSchemeStore = useColorSchemeStore()
+const { colorSchemes, selectedSchemeIndex, schemeGenerationReady } = storeToRefs(colorSchemeStore)
 
-// 获取地图实例
-const getMap = (): mapboxgl.Map | null => {
-  return mapRef?.value ?? null
+const getMap = (): mapboxgl.Map | null => mapInstanceRef.value
+
+const canGalleryPrev = computed(
+  () => colorSchemes.value.length > 0 && selectedSchemeIndex.value > 0,
+)
+const canGalleryNext = computed(
+  () =>
+    colorSchemes.value.length > 0 &&
+    selectedSchemeIndex.value < colorSchemes.value.length - 1,
+)
+const galleryCounter = computed(() => {
+  const n = colorSchemes.value.length
+  if (!n) return ''
+  return t('generatePage.schemeCounter', {
+    current: selectedSchemeIndex.value + 1,
+    total: n,
+  })
+})
+
+function galleryPrev() {
+  colorSchemeStore.setSelectedSchemeIndex(selectedSchemeIndex.value - 1)
+}
+function galleryNext() {
+  colorSchemeStore.setSelectedSchemeIndex(selectedSchemeIndex.value + 1)
+}
+
+const isGenerating = ref(false)
+const canGenerate = computed(
+  () =>
+    props.footerMode === 'generate' &&
+    colorSchemeStore.currentScheme.layers.length > 0 &&
+    schemeGenerationReady.value,
+)
+
+const generateBlockedReason = computed(() => {
+  if (props.footerMode !== 'generate') return ''
+  if (colorSchemeStore.currentScheme.layers.length === 0) return t('mapStyle.noCurrentScheme')
+  if (!schemeGenerationReady.value) return t('mapStyle.generateBlockedNeedPipeline')
+  return ''
+})
+
+async function handleGenerateSchemes() {
+  const currentScheme = colorSchemeStore.currentScheme
+  if (!currentScheme.layers.length) {
+    ElMessage.warning(t('mapStyle.noCurrentScheme'))
+    return
+  }
+  if (!schemeGenerationReady.value) {
+    ElMessage.warning(t('mapStyle.generateBlockedNeedPipeline'))
+    return
+  }
+
+  isGenerating.value = true
+  try {
+    const response = await schemeApi.generateSchemes({
+      currentScheme,
+      count: 5,
+      jobId: colorSchemeStore.lastPipelineJobId || undefined,
+    })
+    colorSchemeStore.setColorSchemes(response.schemes)
+    ElMessage.success(t('mapStyle.generateSuccess', { count: response.schemes.length }))
+    await router.push('/generate')
+  } catch (error) {
+    console.error('生成方案失败:', error)
+    ElMessage.error(
+      error instanceof Error ? error.message : t('mapStyle.generateError'),
+    )
+  } finally {
+    isGenerating.value = false
+  }
 }
 
 // 展开的类别
@@ -210,61 +389,10 @@ const predefineColors = [
   '#888888',
 ]
 
-// 图层配置接口
-interface LayerConfig {
-  id: string
-  nameKey: string // 翻译键，而不是直接的中文名称
-  paintProperty: 'line-color' | 'fill-color' | 'fill-outline-color' | 'text-color' | 'icon-color'
-  defaultColor?: string
-}
-
-// 获取图层显示名称（国际化）
 const getLayerName = (nameKey: string): string => {
   return t(`mapStyle.layers.${nameKey}`)
 }
 
-// 颜色方案类型从 store 导入
-
-// 水体图层配置
-const waterLayers: LayerConfig[] = [
-  { id: 'water', nameKey: 'water', paintProperty: 'fill-color' },
-  { id: 'waterway', nameKey: 'waterway', paintProperty: 'line-color' },
-]
-
-// 道路图层配置
-const roadLayers: LayerConfig[] = [
-  { id: 'road-pedestrian', nameKey: 'roadPedestrian', paintProperty: 'line-color' },
-  { id: 'road-path', nameKey: 'roadPath', paintProperty: 'line-color' },
-  { id: 'road-minor', nameKey: 'roadMinor', paintProperty: 'line-color' },
-  { id: 'road-street', nameKey: 'roadStreet', paintProperty: 'line-color' },
-  { id: 'road-secondary-tertiary', nameKey: 'roadSecondaryTertiary', paintProperty: 'line-color' },
-  { id: 'road-primary', nameKey: 'roadPrimary', paintProperty: 'line-color' },
-  { id: 'road-motorway-trunk', nameKey: 'roadMotorwayTrunk', paintProperty: 'line-color' },
-]
-
-// 建筑图层配置
-const buildingLayers: LayerConfig[] = [
-  { id: 'building', nameKey: 'building', paintProperty: 'fill-color' },
-]
-
-// 绿地/土地图层配置
-const greenLayers: LayerConfig[] = [
-  { id: 'landcover', nameKey: 'landcover', paintProperty: 'fill-color' },
-  { id: 'national-park', nameKey: 'nationalPark', paintProperty: 'fill-color' },
-  { id: 'landuse', nameKey: 'landuse', paintProperty: 'fill-color' },
-]
-
-// 注记图层配置（使用 icon-color 而非 text-color）
-const labelLayers: LayerConfig[] = [
-  { id: 'waterway-label', nameKey: 'waterwayLabel', paintProperty: 'icon-color' },
-  { id: 'water-line-label', nameKey: 'waterLineLabel', paintProperty: 'icon-color' },
-  { id: 'water-point-label', nameKey: 'waterPointLabel', paintProperty: 'icon-color' },
-  { id: 'road-label', nameKey: 'roadLabel', paintProperty: 'icon-color' },
-  { id: 'place-label', nameKey: 'placeLabel', paintProperty: 'icon-color' },
-  { id: 'poi-label', nameKey: 'poiLabel', paintProperty: 'icon-color' },
-]
-
-// 列出所有图层（用于调试）
 const listAllLayers = () => {
   const map = getMap()
   if (!map) {
@@ -293,24 +421,17 @@ const listAllLayers = () => {
 
 // 监听地图实例，保存 center 和 zoom
 watch(
-  () => mapRef?.value,
-  map => {
-    if (!map) {
+  () => mapInstanceRef.value,
+  mapInstance => {
+    if (
+      !mapInstance ||
+      typeof mapInstance.on !== 'function' ||
+      typeof mapInstance.getCenter !== 'function' ||
+      typeof mapInstance.getZoom !== 'function'
+    ) {
       return
     }
 
-    // 确保 map 是 Mapbox Map 实例
-    // 检查 map 对象是否有 Mapbox Map 的关键方法
-    // 处理 Proxy 对象的情况
-    const actualMap = map?.value || map
-    if (!actualMap || typeof actualMap.on !== 'function' || typeof actualMap.getCenter !== 'function' || typeof actualMap.getZoom !== 'function') {
-      return
-    }
-    
-    // 使用实际的地图实例
-    const mapInstance = actualMap
-
-    // 监听地图移动，更新保存的 center 和 zoom
     const updatePosition = () => {
       const center = mapInstance.getCenter()
       currentCenter.value = [center.lng, center.lat]
@@ -320,16 +441,13 @@ watch(
     mapInstance.on('moveend', updatePosition)
     mapInstance.on('zoomend', updatePosition)
 
-    // 初始化时保存位置并列出图层
     const initMap = () => {
       updatePosition()
 
-      // 初始化颜色方案到 Pinia store
       setTimeout(() => {
         updateColorSchemeInStore()
       }, 500)
 
-      // 多次尝试列出图层
       const tryListLayers = () => {
         if (mapInstance.isStyleLoaded()) {
           listAllLayers()
@@ -342,33 +460,26 @@ watch(
         }
       }
 
-      // 立即尝试
       tryListLayers()
-
-      // 延迟尝试（防止事件已触发）
       setTimeout(() => {
         tryListLayers()
       }, 2000)
-
       setTimeout(() => {
         tryListLayers()
       }, 5000)
     }
 
-    // 初始化地图
-    if (mapInstance.isStyleLoaded && mapInstance.isStyleLoaded()) {
+    if (typeof mapInstance.isStyleLoaded === 'function' && mapInstance.isStyleLoaded()) {
       initMap()
-      // 保存原始颜色
       setTimeout(() => saveOriginalColors(), 500)
-    } else if (mapInstance.once) {
+    } else if (typeof mapInstance.once === 'function') {
       mapInstance.once('load', () => {
         initMap()
-        // 保存原始颜色
         setTimeout(() => saveOriginalColors(), 500)
       })
     }
   },
-  { immediate: true }
+  { immediate: true },
 )
 
 // 保存原始颜色值（在地图加载时，保存所有可配置图层的默认颜色）
@@ -607,11 +718,6 @@ const hexToRgb = (hex: string): string => {
   return `rgb(${r}, ${g}, ${b})`
 }
 
-// 获取所有可配置的图层配置列表
-const getAllConfigurableLayers = (): LayerConfig[] => {
-  return [...waterLayers, ...roadLayers, ...buildingLayers, ...greenLayers, ...labelLayers]
-}
-
 // 从地图样式中获取图层的默认颜色
 const getDefaultColorFromMap = (layerId: string, paintProperty: string): string | null => {
   const map = getMap()
@@ -692,72 +798,74 @@ const normalizeToHex = (color: string): string | null => {
   return null
 }
 
-// 生成当前颜色方案（用于遗传算法）
-// 包含所有可配置的图层，未修改的使用 Mapbox 默认颜色，占比默认等权重
+/** 与 Mapbox Studio 侧栏一致：展示当前 HEX（取色器 / store / 地图） */
+function layerHexLine(layer: LayerConfig): string {
+  const fromStore = colorSchemeStore.currentScheme.layers.find(l => l.id === layer.id)
+  const raw = layerColors[layer.id] || fromStore?.color
+  if (raw) {
+    const h = normalizeToHex(raw)
+    if (h) return h
+  }
+  if (originalColors[layer.id]) {
+    const h = normalizeToHex(originalColors[layer.id])
+    if (h) return h
+  }
+  const mapC = getDefaultColorFromMap(layer.id, layer.paintProperty)
+  const h2 = mapC ? normalizeToHex(mapC) : null
+  return h2 || '—'
+}
+
+function layerSemanticLine(layer: LayerConfig): string {
+  const fromStore = colorSchemeStore.currentScheme.layers.find(l => l.id === layer.id)
+  const sem = fromStore?.semantic ?? semanticForLayerId(layer.id)
+  if (!sem) return ''
+  const key = `mapStyle.semantics.${sem}`
+  const out = t(key)
+  return out === key ? sem : out
+}
+
+// 生成当前颜色方案（用于后端 / 生成方案 API）
 const generateCurrentColorScheme = (): ColorScheme => {
   const allLayersConfig = getAllConfigurableLayers()
-
-  // 包含所有图层的颜色配置（必须包含所有可配置的图层）
+  const prevById = new Map(colorSchemeStore.currentScheme.layers.map(l => [l.id, l]))
   const allLayers: ColorSchemeItem[] = []
 
   allLayersConfig.forEach(layerConfig => {
     let color: string | null = null
-    let colorSource = 'unknown'
 
-    // 优先使用用户设置的颜色
     if (layerColors[layerConfig.id]) {
       color = layerColors[layerConfig.id]
-      colorSource = 'user'
+    } else if (originalColors[layerConfig.id]) {
+      color = originalColors[layerConfig.id]
     } else {
-      // 如果没有用户设置，优先使用保存的原始颜色
-      if (originalColors[layerConfig.id]) {
-        color = originalColors[layerConfig.id]
-        colorSource = 'original'
+      const defaultColor = getDefaultColorFromMap(layerConfig.id, layerConfig.paintProperty)
+      if (defaultColor) {
+        color = defaultColor
+        originalColors[layerConfig.id] = defaultColor
       } else {
-        // 如果原始颜色未保存，从地图中获取默认颜色
-        const defaultColor = getDefaultColorFromMap(layerConfig.id, layerConfig.paintProperty)
-        if (defaultColor) {
-          color = defaultColor
-          colorSource = 'mapbox'
-          // 同时保存为原始颜色，以便下次使用
-          originalColors[layerConfig.id] = defaultColor
-        } else {
-          // 如果都无法获取，使用配置中的默认颜色（如果有）
-          color = layerConfig.defaultColor || null
-          colorSource = 'config'
-        }
+        color = layerConfig.defaultColor || null
       }
     }
 
-    // 规范化颜色为 HEX 格式
-    let hexColor: string | null = null
-    if (color) {
-      hexColor = normalizeToHex(color)
-    }
-
-    // 如果仍然无法获取颜色，使用一个默认占位颜色（确保所有图层都被包含）
+    let hexColor: string | null = color ? normalizeToHex(color) : null
     if (!hexColor) {
-      // 使用灰色作为占位颜色，确保图层被包含
-      hexColor = '#808080' // 灰色
+      hexColor = '#808080'
     }
 
-    // 确保所有图层都被添加到方案中
-    allLayers.push({
+    const prev = prevById.get(layerConfig.id)
+    const sem = prev?.semantic ?? semanticForLayerId(layerConfig.id)
+    const row: ColorSchemeItem = {
       id: layerConfig.id,
       color: hexColor,
-      weight: 0, // 先设为0，后面统一计算等权重
-    })
+      weight: 1,
+    }
+    if (sem !== undefined) {
+      row.semantic = sem
+    }
+    allLayers.push(row)
   })
 
-  // 计算等权重
-  const weight = allLayers.length > 0 ? 1 / allLayers.length : 0
-  allLayers.forEach(layer => {
-    layer.weight = weight
-  })
-
-  return {
-    layers: allLayers,
-  }
+  return { layers: allLayers }
 }
 
 // 更新 Pinia store 中的颜色方案
@@ -778,52 +886,27 @@ const updateColorSchemeInStore = () => {
   colorSchemeStore.setCurrentScheme(scheme)
 }
 
-// 生成方案相关状态
-const isGenerating = ref(false)
-const generatedCount = ref(0)
-
-// 是否可以生成方案（当前方案不为空）
-const canGenerate = computed(() => {
-  const scheme = colorSchemeStore.currentScheme
-  return scheme.layers.length > 0
-})
-
-// 生成方案处理函数
-const handleGenerateSchemes = async () => {
-  const currentScheme = colorSchemeStore.currentScheme
-  
-  if (!currentScheme || currentScheme.layers.length === 0) {
-    ElMessage.warning(t('mapStyle.noCurrentScheme'))
-    return
-  }
-
-  isGenerating.value = true
-  generatedCount.value = 0
-
-  try {
-    const response = await schemeApi.generateSchemes({
-      currentScheme,
-      count: 5, // 生成 5 个方案
+// 外部写入 currentScheme（如 pipeline 首套方案）时同步到取色器与地图
+watch(
+  () =>
+    colorSchemeStore.currentScheme.layers.map(l => `${l.id}:${l.color}`).join('|'),
+  () => {
+    if (!getMap()?.isStyleLoaded()) {
+      return
+    }
+    const configurable = new Set(getAllConfigurableLayers().map(l => l.id))
+    colorSchemeStore.currentScheme.layers.forEach(l => {
+      if (!configurable.has(l.id)) {
+        return
+      }
+      const h = normalizeToHex(l.color)
+      if (h) {
+        layerColors[l.id] = h
+      }
     })
-
-    // 将生成的方案（包含 id）保存到 store
-    colorSchemeStore.setColorSchemes(response.schemes)
-    generatedCount.value = response.schemes.length
-
-    ElMessage.success(
-      t('mapStyle.generateSuccess', { count: response.schemes.length })
-    )
-  } catch (error) {
-    console.error('生成方案失败:', error)
-    ElMessage.error(
-      error instanceof Error
-        ? error.message
-        : t('mapStyle.generateError')
-    )
-  } finally {
-    isGenerating.value = false
+    applyColorsToMap()
   }
-}
+)
 
 // 组件挂载时初始化
 onMounted(() => {
@@ -857,19 +940,29 @@ onMounted(() => {
 </script>
 
 <style scoped>
+/* Mapbox Studio 侧栏风格：深色底、细分割、属性键小写标签 */
 .map-style {
+  --studio-bg: #2c2c2c;
+  --studio-bg-elevated: #333333;
+  --studio-border: rgba(255, 255, 255, 0.08);
+  --studio-text: rgba(255, 255, 255, 0.92);
+  --studio-text-muted: rgba(255, 255, 255, 0.45);
+  --studio-accent: #4264fb;
+
   height: 100%;
   display: flex;
   flex-direction: column;
-  background: #fff;
+  background: var(--studio-bg);
+  color: var(--studio-text);
 }
 
 .style-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 16px;
-  border-bottom: 1px solid #e4e7ed;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--studio-border);
+  background: var(--studio-bg);
 }
 
 .header-actions {
@@ -880,9 +973,11 @@ onMounted(() => {
 
 .style-header h3 {
   margin: 0;
-  font-size: 16px;
+  font-size: 13px;
   font-weight: 600;
-  color: #303133;
+  letter-spacing: 0.02em;
+  color: var(--studio-text);
+  text-transform: uppercase;
 }
 
 .style-content {
@@ -890,81 +985,153 @@ onMounted(() => {
   overflow-y: auto;
 }
 
-.category-section {
+.studio-collapse.category-section {
   border: none;
+  --el-collapse-border-color: var(--studio-border);
 }
 
-.category-section :deep(.el-collapse-item__header) {
-  padding: 12px 16px;
+.studio-collapse :deep(.el-collapse-item__header) {
+  padding: 10px 14px;
   font-weight: 600;
-  font-size: 14px;
-  color: #303133;
-  border-bottom: 1px solid #f0f0f0;
+  font-size: 12px;
+  color: var(--studio-text);
+  background: var(--studio-bg);
+  border-bottom: 1px solid var(--studio-border);
 }
 
-.category-section :deep(.el-collapse-item__content) {
+.studio-collapse :deep(.el-collapse-item__wrap) {
+  border-bottom: none;
+  background: var(--studio-bg);
+}
+
+.studio-collapse :deep(.el-collapse-item__content) {
   padding: 0;
+  background: var(--studio-bg);
+}
+
+.studio-collapse :deep(.el-collapse-item__arrow) {
+  color: var(--studio-text-muted);
 }
 
 .layer-list {
-  padding: 8px;
+  padding: 0;
 }
 
-.layer-item {
+.studio-layer-row {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  padding: 10px 12px;
-  margin-bottom: 8px;
-  background: #f5f7fa;
-  border-radius: 6px;
-  transition: background-color 0.2s;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--studio-border);
+  background: var(--studio-bg);
 }
 
-.layer-item:hover {
-  background: #ebedf0;
+.studio-layer-row:hover {
+  background: var(--studio-bg-elevated);
 }
 
-.layer-info {
-  display: flex;
-  flex-direction: column;
+.studio-layer-main {
   flex: 1;
-  margin-right: 12px;
+  min-width: 0;
 }
 
-.layer-name {
-  font-size: 14px;
-  font-weight: 500;
-  color: #303133;
-}
-
-.color-control {
+.studio-layer-title-row {
   display: flex;
-  align-items: center;
+  align-items: baseline;
+  justify-content: space-between;
   gap: 8px;
 }
 
+.studio-layer-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--studio-text);
+}
+
+.studio-paint-key {
+  font-size: 10px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  color: var(--studio-text-muted);
+  text-transform: none;
+  flex-shrink: 0;
+}
+
+.studio-layer-id {
+  margin-top: 2px;
+  font-size: 10px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  color: var(--studio-text-muted);
+  word-break: break-all;
+}
+
+.studio-layer-meta {
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--studio-text-muted);
+  line-height: 1.4;
+}
+
+.studio-hex {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.studio-meta-sep {
+  margin: 0 4px;
+  opacity: 0.5;
+}
+
+.studio-color-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.studio-reset-btn {
+  color: var(--studio-text-muted) !important;
+  padding: 2px 6px !important;
+  font-size: 11px !important;
+}
+
+.studio-reset-btn:hover {
+  color: var(--studio-text) !important;
+}
+
 :deep(.el-color-picker) {
-  height: 32px;
+  height: 28px;
 }
 
 :deep(.el-color-picker__trigger) {
-  width: 40px;
-  height: 32px;
-  border-radius: 4px;
+  width: 28px;
+  height: 28px;
+  border-radius: 2px;
+  border: 1px solid var(--studio-border);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.25);
 }
 
 .generate-section {
-  padding: 16px;
-  border-top: 1px solid #e4e7ed;
-  background: #fafafa;
+  padding: 12px 14px;
+  border-top: 1px solid var(--studio-border);
+  background: #262626;
+}
+
+.generate-btn-wrap {
+  display: block;
+  width: 100%;
 }
 
 .generate-button {
   width: 100%;
-  height: 40px;
-  font-size: 14px;
-  font-weight: 500;
+  height: 36px;
+  font-size: 12px;
+  font-weight: 600;
+  --el-button-bg-color: var(--studio-accent);
+  --el-button-border-color: var(--studio-accent);
+  --el-button-hover-bg-color: #5b7cfe;
+  --el-button-hover-border-color: #5b7cfe;
 }
 
 .generate-button .el-icon {
@@ -974,7 +1141,47 @@ onMounted(() => {
 .generate-info {
   margin-top: 8px;
   text-align: center;
+  font-size: 11px;
+  color: var(--studio-text-muted);
+}
+
+.gallery-footer .gallery-hint {
+  margin: 0;
+  font-size: 11px;
+  color: var(--studio-text-muted);
+  text-align: center;
+  line-height: 1.45;
+}
+
+.gallery-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.gallery-counter {
   font-size: 12px;
-  color: #909399;
+  font-weight: 600;
+  color: var(--studio-text);
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.gallery-btn {
+  flex: 1;
+  min-width: 0;
+}
+
+.style-header :deep(.el-button) {
+  --el-button-bg-color: transparent;
+  --el-button-border-color: var(--studio-border);
+  --el-button-text-color: var(--studio-text-muted);
+  font-size: 11px;
+}
+
+.style-header :deep(.el-button:hover) {
+  --el-button-text-color: var(--studio-text);
+  --el-button-border-color: rgba(255, 255, 255, 0.2);
 }
 </style>
