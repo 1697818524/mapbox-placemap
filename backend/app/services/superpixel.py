@@ -9,10 +9,12 @@ import cv2
 import numpy as np
 from skimage.segmentation import slic
 
+from app.utils.image_io import imread_color, imwrite
+
 
 class SuperpixelService:
     def run_slic(self, image_path: str, n_segments: int, compactness: float) -> np.ndarray:
-        img_bgr = cv2.imread(image_path, cv2.IMREAD_COLOR)
+        img_bgr = imread_color(image_path)
         if img_bgr is None:
             raise FileNotFoundError(f"Image not found: {image_path}")
         img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
@@ -41,4 +43,4 @@ class SuperpixelService:
                 [(i * 37) % 256, (i * 73) % 256, (i * 109) % 256],
                 dtype=np.uint8,
             )
-        cv2.imwrite(str(labels_png), cv2.cvtColor(viz, cv2.COLOR_RGB2BGR))
+        imwrite(str(labels_png), cv2.cvtColor(viz, cv2.COLOR_RGB2BGR))

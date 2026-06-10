@@ -11,6 +11,8 @@ import cv2
 import numpy as np
 from PIL import Image
 
+from app.utils.image_io import imread_color
+
 
 CITYSCAPES_COLORS = np.array(
     [
@@ -98,7 +100,7 @@ class SemanticAssignService:
         coarse_map: np.ndarray,
         image_id: str,
     ) -> List[Dict]:
-        img_bgr = cv2.imread(image_path, cv2.IMREAD_COLOR)
+        img_bgr = imread_color(image_path)
         if img_bgr is None:
             raise FileNotFoundError(f"Image not found: {image_path}")
         img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)

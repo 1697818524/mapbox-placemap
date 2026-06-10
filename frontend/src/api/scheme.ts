@@ -16,6 +16,10 @@ export interface GenerateSchemesRequest {
   count: number
   /** 若存在，后端优先用该任务的聚类调色板生成方案 */
   jobId?: string | null
+  population?: number
+  generations?: number
+  semanticMode?: 'local' | 'global'
+  layerSemantics?: Record<string, string>
 }
 
 /**
@@ -38,7 +42,7 @@ export const schemeApi = {
   generateSchemes: async (
     request: GenerateSchemesRequest
   ): Promise<GenerateSchemesResponse> => {
-    const { currentScheme, count, jobId } = request
+    const { currentScheme, count, jobId, population, generations, semanticMode, layerSemantics } = request
 
     try {
       const url = `${getApiBaseUrl()}/api/schemes/generate`
@@ -55,6 +59,10 @@ export const schemeApi = {
           currentScheme,
           count,
           ...(jobId ? { job_id: jobId } : {}),
+          ...(population ? { population } : {}),
+          ...(generations ? { generations } : {}),
+          ...(semanticMode ? { semantic_mode: semanticMode } : {}),
+          ...(layerSemantics ? { layer_semantics: layerSemantics } : {}),
         }),
         signal: controller.signal,
       })

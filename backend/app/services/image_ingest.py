@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import hashlib
+import asyncio
 from pathlib import Path
 from typing import List, Optional
 from uuid import uuid4
@@ -78,40 +79,49 @@ class ImageIngestService:
 
     async def ingest_urls(self, location: str, urls: List[str]) -> List[CollectedImage]:
         output_dir = self._location_dir(location)
-        results: List[CollectedImage] = []
+        semaphore = asyncio.Semaphore(6)
 
         async with httpx.AsyncClient(timeout=settings.REQUEST_TIMEOUT, follow_redirects=True) as client:
-            for url in urls:
-                try:
-                    response = await client.get(
-                        url,
-                        headers={"User-Agent": settings.USER_AGENT},
-                    )
-                    response.raise_for_status()
-                    content_type = response.headers.get("content-type")
-                    if not self._is_image_content_type(content_type):
-                        continue
+            async def fetch_one(url: str) -> Optional[CollectedImage]:
+                async with semaphore:
+                    try:
+                        response = await client.get(
+                            url,
+                            headers={"User-Agent": settings.USER_AGENT},
+                        )
+                        response.raise_for_status()
+                        content_type = response.headers.get("content-type")
+                        if not self._is_image_content_type(content_type):
+                            return None
 
-                    raw = response.content
-                    if not raw:
-                        continue
+                        raw = response.content
+                        if not raw:
+                            return None
 
-                    image_id = self._build_image_id(raw)
-                    ext = self._file_ext_from_content_type(content_type)
-                    filename = f"{image_id}{ext}"
-                    path = output_dir / filename
-                    path.write_bytes(raw)
+                        image_id = self._build_image_id(raw)
+                        ext = self._file_ext_from_content_type(content_type)
+                        filename = f"{image_id}{ext}"
+                        path = output_dir / filename
+                        path.write_bytes(raw)
 
-                    results.append(
-                        CollectedImage(
+                        return CollectedImage(
                             image_id=image_id,
                             filename=filename,
                             path=str(path),
                             source="search",
                             original_url=url,
                         )
-                    )
-                except Exception:
-                    continue
+                    except Exception:
+                        return None
+
+            items = await asyncio.gather(*(fetch_one(url) for url in urls))
+
+        seen: set[str] = set()
+        results: List[CollectedImage] = []
+        for item in items:
+            if not item or item.image_id in seen:
+                continue
+            seen.add(item.image_id)
+            results.append(item)
 
         return results

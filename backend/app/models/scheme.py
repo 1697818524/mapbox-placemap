@@ -1,7 +1,7 @@
 """
 配色方案 API 模型（与前端 stores / api/scheme 对齐）
 """
-from typing import List, Optional
+from typing import Dict, List, Literal, Optional
 
 from pydantic import BaseModel, Field
 
@@ -49,6 +49,10 @@ class GenerateSchemesRequest(BaseModel):
     currentScheme: ColorScheme
     count: int = Field(5, ge=1, le=20)
     job_id: Optional[str] = None
+    population: int = Field(40, ge=8, le=200)
+    generations: int = Field(25, ge=1, le=200)
+    semantic_mode: Literal["local", "global"] = "local"
+    layer_semantics: Dict[str, str] = Field(default_factory=dict)
 
 
 class GenerateSchemesResponse(BaseModel):

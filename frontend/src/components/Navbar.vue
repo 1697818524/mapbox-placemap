@@ -4,7 +4,6 @@
       <img class="logo" :src="logoImg" alt="PlaceMap Generator" />
       <nav class="nav-links">
         <router-link to="/" class="nav-link">{{ t('nav.home') }}</router-link>
-        <router-link to="/generate" class="nav-link">{{ t('nav.schemeGenerate') }}</router-link>
       </nav>
     </div>
 

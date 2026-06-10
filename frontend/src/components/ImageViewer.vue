@@ -28,7 +28,7 @@
         </button>
 
         <!-- 图片容器 -->
-        <div class="viewer-content">
+        <div v-if="currentImage" class="viewer-content">
           <div class="viewer-image-wrapper">
             <img
               :src="getImageProxyUrl(currentImage.url)"
@@ -95,7 +95,9 @@ const emit = defineEmits<Emits>()
 
 const isLoading = ref(true)
 
-const currentImage = computed(() => props.images[props.currentIndex] || props.images[0])
+const currentImage = computed<ImageResult | null>(
+  () => props.images[props.currentIndex] ?? props.images[0] ?? null,
+)
 
 const handleClose = () => {
   emit('close')

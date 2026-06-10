@@ -36,7 +36,7 @@ class PaletteClusterService:
             k_auto = int(max(k_min, min(k_max, np.sqrt(n))))
             k = max(1, min(k_auto, n))
 
-            kmeans = KMeans(n_clusters=k, random_state=42, n_init=10)
+            kmeans = KMeans(n_clusters=k, random_state=42, n_init=3)
             labels = kmeans.fit_predict(colors)
             centroids = kmeans.cluster_centers_.astype(int)
             counts = np.bincount(labels, minlength=k)

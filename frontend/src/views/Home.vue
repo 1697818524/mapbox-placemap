@@ -26,9 +26,9 @@ import Navbar from '@/components/Navbar.vue'
 import MapInfo from '@/components/MapInfo.vue'
 import MapDisplay from '@/components/MapDisplay.vue'
 import MapStyle from '@/components/MapStyle.vue'
-import type mapboxgl from 'mapbox-gl'
+import type { MapboxMapInstance } from '@/composables'
 
-const mapInstanceRef = ref<mapboxgl.Map | null>(null)
+const mapInstanceRef = ref<MapboxMapInstance | null>(null)
 provide('mapInstance', mapInstanceRef)
 </script>
 
@@ -39,36 +39,39 @@ provide('mapInstance', mapInstanceRef)
   height: 100%;
 }
 .navbar {
-  height: 100px;
-  background-color: #fefefe;
+  height: 88px;
+  background-color: #fff;
   flex-shrink: 0;
+  border-bottom: 1px solid #e7eaf0;
 }
 .main-content {
   display: flex;
   flex-grow: 1;
-  background-color: #e0cece;
+  background-color: #f4f6f8;
   flex-direction: row;
   overflow: hidden;
   min-height: 0;
 }
 .left-sidebar {
-  width: 300px;
-  background-color: aqua;
+  width: 316px;
+  background-color: #fff;
   flex-shrink: 0;
+  border-right: 1px solid #e4e7ed;
 }
 .map-container {
   flex-grow: 1;
-  background-color: #eec9c9;
+  background-color: #edf1f5;
   flex-shrink: 0;
   min-width: 0;
 }
 .right-sidebar {
-  width: 400px;
-  background-color: #f0f0f0;
+  width: 392px;
+  background-color: #fff;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
   min-height: 0;
+  border-left: 1px solid #e4e7ed;
 }
 .right-sidebar :deep(.map-style) {
   flex: 1;

@@ -80,8 +80,12 @@ export default {
     green: '绿地/土地',
     labels: '注记',
     layers: {
+      background: '背景',
       water: '水体',
       waterway: '水道',
+      roadLevel1: '一级道路',
+      roadLevel2: '二级道路',
+      roadLevel3: '三级道路',
       roadPedestrian: '人行道',
       roadPath: '小径',
       roadMinor: '次要道路',
@@ -114,6 +118,7 @@ export default {
     layerIdLabel: '图层 id',
     semanticsUnknown: '未标注',
     semantics: {
+      base: '底色',
       architecture: '建筑',
       roadnet: '路网',
       green: '绿地',

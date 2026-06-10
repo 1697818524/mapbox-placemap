@@ -4,62 +4,22 @@
 
     <div class="image-results">
       <div class="image-results-header">
-        <h3 class="image-results-title">{{ t('mapInfo.relatedImages') }}</h3>
-        <el-tooltip :content="pipelineTooltipText" placement="top" :disabled="canSubmitPipeline && !pipelineLoading">
-          <span>
-            <el-button
-              type="primary"
-              size="small"
-              :loading="pipelineLoading"
-              :disabled="!canSubmitPipeline || isLoadingImages || pipelineLoading"
-              @click="runVisionPipeline"
-            >
-              {{ t('mapInfo.runPipeline') }}
-            </el-button>
-          </span>
-        </el-tooltip>
-      </div>
-
-      <div class="batch-toolbar">
-        <span class="batch-count">{{ t('mapInfo.batchCount', { n: totalBatchCount, max: BATCH_MAX }) }}</span>
-        <div class="batch-actions">
-          <el-button text size="small" type="primary" :disabled="imageResults.length === 0" @click="selectAllSearch">
-            {{ t('mapInfo.selectAllSearch') }}
-          </el-button>
-          <el-button text size="small" :disabled="selectedSearchCount === 0" @click="clearSearchSelection">
-            {{ t('mapInfo.clearSearchSelection') }}
-          </el-button>
+        <div>
+          <h3 class="image-results-title">当地图片搜索</h3>
+          <p class="image-results-subtitle">选择适合的当地图片加入图片集</p>
         </div>
       </div>
 
-      <div class="upload-row">
-        <span class="upload-label">{{ t('mapInfo.localUpload') }}</span>
-        <input
-          ref="fileInputRef"
-          type="file"
-          class="hidden-input"
-          multiple
-          accept="image/*"
-          @change="onLocalFilesPicked"
-        />
-        <el-button size="small" @click="openFilePicker">{{ t('mapInfo.chooseFiles') }}</el-button>
-        <span class="upload-hint">{{ t('mapInfo.uploadHint', { max: BATCH_MAX }) }}</span>
-      </div>
-      <div v-if="localFiles.length > 0" class="local-files">
-        <el-tag
-          v-for="(f, i) in localFiles"
-          :key="`${f.name}-${f.size}-${i}`"
-          closable
-          size="small"
-          class="file-tag"
-          @close="removeLocalFile(i)"
-        >
-          {{ f.name }}
-        </el-tag>
-      </div>
-
-      <div v-if="pipelineLoading && pipelineProgressLine" class="pipeline-progress">
-        {{ pipelineProgressLine }}
+      <div class="batch-toolbar">
+        <span class="batch-count">已选 {{ selectedSearchCount }} 张</span>
+        <div class="batch-actions">
+          <el-button text size="small" type="primary" :disabled="imageResults.length === 0" @click="selectAllSearch">
+            选择当前结果
+          </el-button>
+          <el-button text size="small" :disabled="selectedSearchCount === 0" @click="clearSearchSelection">
+            清空选择
+          </el-button>
+        </div>
       </div>
 
       <div v-if="isLoadingImages" class="image-loading">
@@ -73,14 +33,15 @@
           class="image-item"
           :class="{ 'image-item--selected': selectedFlags[index] }"
         >
-          <label class="image-check" @click.stop>
+          <label class="image-check" @click.stop.prevent="toggleSearchSelect(index)">
             <input
               type="checkbox"
               :checked="selectedFlags[index]"
-              @click.prevent="toggleSearchSelect(index)"
+              readonly
             />
+            <span class="image-check-mark" :class="{ 'image-check-mark--checked': selectedFlags[index] }"></span>
           </label>
-          <div class="image-wrapper" @click="openImageViewer(index)">
+          <div class="image-wrapper" @click="toggleSearchSelect(index)" @dblclick.stop="openImageViewer(index)">
             <img
               :src="getImageProxyUrl(image.thumbnail || image.url)"
               :alt="image.title || t('mapInfo.image')"
@@ -106,17 +67,30 @@
       <div v-else-if="!isLoadingImages && imageResults.length === 0" class="image-empty">
         <span>{{ t('mapInfo.imageSearchPlaceholder') }}</span>
       </div>
+
+      <ImageCollection
+        :selected-images="selectedSearchImages"
+        :local-files="localFiles"
+        :total="totalBatchCount"
+        :max="BATCH_MAX"
+        :loading="pipelineLoading"
+        :progress="pipelineProgressLine"
+        @upload="onLocalFilesPicked"
+        @remove-search="removeSelectedSearchImage"
+        @remove-local="removeLocalFile"
+      />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, watch, computed, unref } from 'vue'
+import { ref, watch, computed, unref, onMounted, onBeforeUnmount } from 'vue'
 import { Loading } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { useI18n } from 'vue-i18n'
 import MapSearch from './MapSearch.vue'
 import ImageViewer from './ImageViewer.vue'
+import ImageCollection from './ImageCollection.vue'
 import { imageApi, pipelineApi, isSchemeGenerationReady, getImageProxyUrl } from '@/api'
 import { API_CONFIG, IMAGE_CONFIG } from '@/config'
 import { slugifyLocation } from '@/utils'
@@ -130,7 +104,6 @@ const { t } = useI18n()
 const colorSchemeStore = useColorSchemeStore()
 
 const mapSearchRef = ref<InstanceType<typeof MapSearch> | null>(null)
-const fileInputRef = ref<HTMLInputElement | null>(null)
 const imageResults = ref<ImageResult[]>([])
 const selectedFlags = ref<boolean[]>([])
 const localFiles = ref<File[]>([])
@@ -141,19 +114,11 @@ const currentLocationSlug = ref('')
 
 const selectedSearchCount = computed(() => selectedFlags.value.filter(Boolean).length)
 const totalBatchCount = computed(() => selectedSearchCount.value + localFiles.value.length)
-
-const canSubmitPipeline = computed(() => {
-  if (!currentLocationSlug.value.trim()) return false
-  if (totalBatchCount.value < 1 || totalBatchCount.value > BATCH_MAX) return false
-  return true
-})
-
-const pipelineTooltipText = computed(() => {
-  if (!currentLocationSlug.value.trim()) return t('mapInfo.runPipelineDisabled')
-  if (totalBatchCount.value === 0) return t('mapInfo.noImagesSelected', { max: BATCH_MAX })
-  if (totalBatchCount.value > BATCH_MAX) return t('mapInfo.batchMaxReached', { max: BATCH_MAX })
-  return t('mapInfo.runPipelineDisabled')
-})
+const selectedSearchImages = computed(() =>
+  imageResults.value
+    .map((image, index) => ({ image, index }))
+    .filter((_, index) => selectedFlags.value[index]),
+)
 
 function pipelineStageLabel(job: PipelineJob): string {
   const s = job.current_stage
@@ -278,8 +243,12 @@ function clearSearchSelection() {
   selectedFlags.value = imageResults.value.map(() => false)
 }
 
-function openFilePicker() {
-  fileInputRef.value?.click()
+function removeSelectedSearchImage(index: number) {
+  const next = [...selectedFlags.value]
+  if (index >= 0 && index < next.length) {
+    next[index] = false
+    selectedFlags.value = next
+  }
 }
 
 function onLocalFilesPicked(e: Event) {
@@ -306,18 +275,30 @@ function removeLocalFile(i: number) {
   localFiles.value = localFiles.value.filter((_, j) => j !== i)
 }
 
-const runVisionPipeline = async () => {
+type PipelineBuildEvent = CustomEvent<{
+  resolve: (ok: boolean) => void
+  reject: (reason?: unknown) => void
+}>
+
+const runVisionPipeline = async (): Promise<boolean> => {
+  if (pipelineLoading.value) {
+    ElMessage.warning(t('mapInfo.pipelineStarting'))
+    return false
+  }
+  if (colorSchemeStore.schemeGenerationReady && colorSchemeStore.lastPipelineJobId) {
+    return true
+  }
   if (!currentLocationSlug.value) {
     ElMessage.warning(t('mapInfo.runPipelineDisabled'))
-    return
+    return false
   }
   if (totalBatchCount.value === 0) {
     ElMessage.warning(t('mapInfo.noImagesSelected', { max: BATCH_MAX }))
-    return
+    return false
   }
   if (totalBatchCount.value > BATCH_MAX) {
     ElMessage.warning(t('mapInfo.batchMaxReached', { max: BATCH_MAX }))
-    return
+    return false
   }
 
   const urls = imageResults.value
@@ -327,7 +308,7 @@ const runVisionPipeline = async () => {
 
   if (urls.length === 0 && localFiles.value.length === 0) {
     ElMessage.warning(t('mapInfo.noImagesSelected', { max: BATCH_MAX }))
-    return
+    return false
   }
 
   pipelineLoading.value = true
@@ -337,15 +318,22 @@ const runVisionPipeline = async () => {
     pipelineProgressLine.value = t('mapInfo.pipelineSaving')
     const mergedIds: string[] = []
 
-    if (localFiles.value.length > 0) {
-      const uploaded = await imageApi.upload(currentLocationSlug.value, localFiles.value)
+    const [uploaded, collected] = await Promise.all([
+      localFiles.value.length > 0
+        ? imageApi.upload(currentLocationSlug.value, localFiles.value)
+        : Promise.resolve(null),
+      urls.length > 0
+        ? imageApi.collect({
+            location: currentLocationSlug.value,
+            urls,
+          })
+        : Promise.resolve(null),
+    ])
+
+    if (uploaded) {
       mergedIds.push(...uploaded.image_ids)
     }
-    if (urls.length > 0) {
-      const collected = await imageApi.collect({
-        location: currentLocationSlug.value,
-        urls,
-      })
+    if (collected) {
       mergedIds.push(...collected.image_ids)
     }
 
@@ -373,7 +361,7 @@ const runVisionPipeline = async () => {
       colorSchemeStore.setSchemeGenerationReady(false)
       const msg = final.error_message || final.error_code || 'unknown'
       ElMessage.error(t('mapInfo.pipelineFailed', { msg }))
-      return
+      return false
     }
 
     colorSchemeStore.setLastPipelineJobId(created.job_id)
@@ -390,16 +378,35 @@ const runVisionPipeline = async () => {
     ElMessage.success(t('mapInfo.pipelineSuccess'))
     localFiles.value = []
     selectedFlags.value = imageResults.value.map(() => false)
+    return true
   } catch (e) {
     colorSchemeStore.setLastPipelineJobId(null)
     colorSchemeStore.setSchemeGenerationReady(false)
     const msg = e instanceof Error ? e.message : String(e)
     ElMessage.error(msg)
+    return false
   } finally {
     pipelineLoading.value = false
     pipelineProgressLine.value = ''
   }
 }
+
+async function handlePipelineBuildRequest(event: Event) {
+  const e = event as PipelineBuildEvent
+  try {
+    e.detail.resolve(await runVisionPipeline())
+  } catch (error) {
+    e.detail.reject(error)
+  }
+}
+
+onMounted(() => {
+  window.addEventListener('placemap:build-samples', handlePipelineBuildRequest)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('placemap:build-samples', handlePipelineBuildRequest)
+})
 
 watch(
   () => unref(mapSearchRef.value?.searchQuery) ?? '',
@@ -430,19 +437,12 @@ watch(
   overflow-y: auto;
 }
 
-.pipeline-progress {
-  font-size: 12px;
-  color: #606266;
-  margin: -8px 0 12px;
-  line-height: 1.4;
-}
-
 .image-results-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
 }
 
 .batch-toolbar {
@@ -451,7 +451,7 @@ watch(
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  margin-bottom: 10px;
+  margin-bottom: 14px;
   font-size: 12px;
   color: #606266;
 }
@@ -466,48 +466,17 @@ watch(
   gap: 4px;
 }
 
-.upload-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
-  font-size: 12px;
-}
-
-.upload-label {
-  color: #606266;
-}
-
-.upload-hint {
-  color: #909399;
-  font-size: 11px;
-}
-
-.hidden-input {
-  position: absolute;
-  width: 0;
-  height: 0;
-  opacity: 0;
-  pointer-events: none;
-}
-
-.local-files {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-bottom: 12px;
-}
-
-.file-tag {
-  max-width: 100%;
-}
-
 .image-results-title {
   margin: 0;
   font-size: 16px;
-  font-weight: 600;
-  color: #303133;
+  font-weight: 650;
+  color: #1f2937;
+}
+
+.image-results-subtitle {
+  margin: 4px 0 0;
+  color: #667085;
+  font-size: 12px;
 }
 
 .image-loading {
@@ -532,29 +501,30 @@ watch(
 
 .image-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
 }
 
 .image-item {
   position: relative;
   cursor: pointer;
-  border-radius: 8px;
+  border-radius: 9px;
   overflow: hidden;
-  background: #f5f7fa;
+  background: #f6f8fb;
   transition:
     transform 0.2s,
     box-shadow 0.2s;
-  outline: 2px solid transparent;
+  outline: 1px solid #e6eaf1;
 }
 
 .image-item--selected {
   outline-color: #4264fb;
+  box-shadow: 0 0 0 3px rgba(66, 100, 251, 0.16);
 }
 
 .image-item:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(23, 35, 61, 0.12);
 }
 
 .image-check {
@@ -575,14 +545,46 @@ watch(
 }
 
 .image-check input {
-  margin: 0;
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.image-check-mark {
+  width: 14px;
+  height: 14px;
+  border: 1px solid #a8abb2;
+  border-radius: 3px;
+  background: #fff;
+}
+
+.image-check-mark--checked {
+  position: relative;
+  border-color: #4264fb;
+  background: #4264fb;
+}
+
+.image-check-mark--checked::after {
+  content: '';
+  position: absolute;
+  left: 4px;
+  top: 1px;
+  width: 4px;
+  height: 8px;
+  border: solid #fff;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+.image-check input,
+.image-check-mark {
   cursor: pointer;
 }
 
 .image-wrapper {
   position: relative;
   width: 100%;
-  padding-top: 75%;
+  padding-top: 68%;
   overflow: hidden;
 }
 
@@ -629,7 +631,7 @@ watch(
 @media (max-width: 768px) {
   .image-grid {
     grid-template-columns: repeat(2, 1fr);
-    gap: 8px;
+    gap: 10px;
   }
 }
 </style>

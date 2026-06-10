@@ -26,5 +26,9 @@ async def generate_schemes(payload: GenerateSchemesRequest) -> GenerateSchemesRe
         payload.currentScheme,
         payload.count,
         job_id=payload.job_id,
+        semantic_mode=payload.semantic_mode,
+        layer_semantics=payload.layer_semantics,
+        population=payload.population,
+        generations=payload.generations,
     )
     return GenerateSchemesResponse(schemes=schemes)

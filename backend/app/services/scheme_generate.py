@@ -16,29 +16,28 @@ from app.models.scheme import (
 )
 
 # 与前端 MapStyle.vue 可配置图层 id 一致
+SCHEME_LAYER_ORDER: Tuple[str, ...] = (
+    "background",
+    "water",
+    "road-level-1",
+    "road-level-2",
+    "road-level-3",
+    "building",
+    "landuse",
+)
+
 LAYER_ID_TO_SEMANTIC: Dict[str, str] = {
+    "background": "base",
     "water": "water",
-    "waterway": "water",
-    "waterway-label": "water",
-    "water-line-label": "water",
-    "water-point-label": "water",
-    "road-pedestrian": "roadnet",
-    "road-path": "roadnet",
-    "road-minor": "roadnet",
-    "road-street": "roadnet",
-    "road-secondary-tertiary": "roadnet",
-    "road-primary": "roadnet",
-    "road-motorway-trunk": "roadnet",
-    "road-label": "roadnet",
+    "road-level-1": "roadnet",
+    "road-level-2": "roadnet",
+    "road-level-3": "roadnet",
     "building": "architecture",
-    "landcover": "green",
-    "national-park": "green",
     "landuse": "green",
-    "place-label": "landmark",
-    "poi-label": "landmark",
 }
 
 SEMANTIC_DEFAULT_HEX: Dict[str, str] = {
+    "base": "#F3EFEC",
     "water": "#4A90D9",
     "roadnet": "#E6E6E8",
     "architecture": "#D4CBBE",
@@ -47,9 +46,30 @@ SEMANTIC_DEFAULT_HEX: Dict[str, str] = {
 }
 
 
+def _normalize_scheme_layers(base: ColorScheme, layer_semantics: Optional[Dict[str, str]] = None) -> ColorScheme:
+    """Keep only visible map style controls, in panel order."""
+    overrides = layer_semantics or {}
+    by_id = {item.id: item for item in base.layers}
+    n = len(SCHEME_LAYER_ORDER)
+    w = 1.0 / n if n else 0.0
+    layers: List[ColorSchemeItem] = []
+    for lid in SCHEME_LAYER_ORDER:
+        sem = overrides.get(lid) or LAYER_ID_TO_SEMANTIC[lid]
+        item = by_id.get(lid)
+        layers.append(
+            ColorSchemeItem(
+                id=lid,
+                color=item.color if item else SEMANTIC_DEFAULT_HEX.get(sem, "#888888"),
+                weight=w,
+                semantic=sem,
+            )
+        )
+    return ColorScheme(layers=layers)
+
+
 def default_color_scheme() -> ColorScheme:
     """Pipeline 无前端方案时使用的基底（图层 id 与前端一致）。"""
-    ids = sorted(LAYER_ID_TO_SEMANTIC.keys())
+    ids = list(SCHEME_LAYER_ORDER)
     n = len(ids)
     w = 1.0 / n if n else 0.0
     layers: List[ColorSchemeItem] = []
@@ -125,6 +145,34 @@ def _shift_layer_color(hex_color: str, scheme_index: int, total_schemes: int) ->
     ns = min(1.0, max(0.15, s * (0.92 + 0.08 * math.sin(scheme_index))))
     nr, ng, nb = _hsl_to_rgb(nh, ns, l)
     return _rgb_to_hex(nr, ng, nb)
+
+
+def _adjust_hsl(hex_color: str, hue_delta: float = 0.0, sat_mul: float = 1.0, light_delta: float = 0.0) -> str:
+    r, g, b = _hex_to_rgb(hex_color)
+    h, s, l = _rgb_to_hsl(r, g, b)
+    nr, ng, nb = _hsl_to_rgb(
+        (h + hue_delta) % 1.0,
+        min(1.0, max(0.0, s * sat_mul)),
+        min(0.96, max(0.08, l + light_delta)),
+    )
+    return _rgb_to_hex(nr, ng, nb)
+
+
+def _fallback_layer_color(item: ColorSchemeItem, scheme_index: int, total_schemes: int) -> str:
+    base = item.color or SEMANTIC_DEFAULT_HEX.get(_layer_semantic(item) or "", "#888888")
+    phase = (scheme_index + 1) / max(total_schemes, 1)
+    hue = 0.08 * phase
+    if item.id == "background":
+        return _adjust_hsl(base, hue_delta=hue * 0.35, sat_mul=0.85, light_delta=0.015 * scheme_index)
+    if item.id == "building":
+        return _adjust_hsl(base, hue_delta=hue * 0.7, sat_mul=1.05, light_delta=-0.02 + 0.012 * scheme_index)
+    if item.id == "road-level-1":
+        return _adjust_hsl(base, hue_delta=hue, sat_mul=1.15, light_delta=-0.10)
+    if item.id == "road-level-2":
+        return _adjust_hsl(base, hue_delta=hue, sat_mul=1.05, light_delta=-0.04)
+    if item.id == "road-level-3":
+        return _adjust_hsl(base, hue_delta=hue, sat_mul=0.95, light_delta=0.04)
+    return _shift_layer_color(base, scheme_index, total_schemes)
 
 
 def _contrast_pair(c1: str, c2: str) -> float:
@@ -207,7 +255,10 @@ def _layer_semantic(item: ColorSchemeItem) -> Optional[str]:
 
 
 def _apply_palette_to_scheme(
-    base: ColorScheme, palette_rgb: Dict[str, Tuple[int, int, int]]
+    base: ColorScheme,
+    palette_rgb: Dict[str, Tuple[int, int, int]],
+    scheme_index: int = 0,
+    total_schemes: int = 1,
 ) -> List[ColorSchemeItem]:
     new_layers: List[ColorSchemeItem] = []
     for item in base.layers:
@@ -226,12 +277,47 @@ def _apply_palette_to_scheme(
             new_layers.append(
                 ColorSchemeItem(
                     id=item.id,
-                    color=item.color,
+                    color=_fallback_layer_color(item, scheme_index, total_schemes),
                     weight=item.weight,
                     semantic=sem,
                 )
             )
     return new_layers
+
+
+def _global_palette_rows(palettes: Dict[str, List[Tuple[int, int, int, int]]]) -> List[Tuple[str, int, int, int, int]]:
+    rows: List[Tuple[str, int, int, int, int]] = []
+    for sem, values in palettes.items():
+        for r, g, b, cnt in values:
+            rows.append((sem, int(r), int(g), int(b), int(cnt)))
+    rows.sort(key=lambda x: -x[4])
+    return rows
+
+
+def _apply_global_palette_to_scheme(
+    base: ColorScheme,
+    palettes: Dict[str, List[Tuple[int, int, int, int]]],
+    scheme_index: int,
+    total_schemes: int,
+    population: int,
+    generations: int,
+) -> List[ColorSchemeItem]:
+    rows = _global_palette_rows(palettes)
+    if not rows:
+        return _apply_palette_to_scheme(base, {}, scheme_index, total_schemes)
+    offset = (scheme_index * max(1, population // 8) + generations) % len(rows)
+    out: List[ColorSchemeItem] = []
+    for idx, item in enumerate(base.layers):
+        _, r, g, b, _ = rows[(offset + idx * 3) % len(rows)]
+        out.append(
+            ColorSchemeItem(
+                id=item.id,
+                color=_rgb_to_hex(r, g, b),
+                weight=item.weight,
+                semantic=_layer_semantic(item),
+            )
+        )
+    return out
 
 
 class SchemeGenerateService:
@@ -241,7 +327,12 @@ class SchemeGenerateService:
         count: int,
         job_id: Optional[str] = None,
         jobs_base_dir: str = "data/jobs",
+        semantic_mode: str = "local",
+        layer_semantics: Optional[Dict[str, str]] = None,
+        population: int = 40,
+        generations: int = 25,
     ) -> List[ColorSchemeWithId]:
+        base = _normalize_scheme_layers(base, layer_semantics)
         cluster_dir: Optional[str] = None
         if job_id:
             p = Path(jobs_base_dir) / job_id / "cluster"
@@ -254,7 +345,10 @@ class SchemeGenerateService:
         for i in range(count):
             if palettes:
                 chosen = _pick_palette_for_scheme(palettes, i)
-                layers = _apply_palette_to_scheme(base, chosen)
+                if semantic_mode == "global":
+                    layers = _apply_global_palette_to_scheme(base, palettes, i, count, population, generations)
+                else:
+                    layers = _apply_palette_to_scheme(base, chosen, i, count)
                 sem_fit = _semantic_fit_score(palettes, chosen)
                 read = _readability_score(layers)
                 div = min(1.0, i / max(count - 1, 1)) if count > 1 else 1.0

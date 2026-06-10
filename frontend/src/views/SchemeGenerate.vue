@@ -19,7 +19,7 @@
                 size="small"
                 :loading="isGenerating"
                 :disabled="!canGenerate"
-                @click="onGenerateSchemes"
+                @click="openGenerateDialog"
               >
                 {{ isGenerating ? t('mapStyle.generating') : t('mapStyle.generateSchemes') }}
               </el-button>
@@ -30,12 +30,54 @@
         <MapStyle class="map-style-fill" footer-mode="gallery" />
       </aside>
     </div>
+
+    <el-dialog v-model="dialogVisible" width="560px" :show-close="!isGenerating">
+      <template #header>
+        <div class="dialog-head">
+          <h3>生成方案参数</h3>
+          <p>调整遗传搜索参数和候选色使用方式。</p>
+        </div>
+      </template>
+      <div class="dialog-form">
+        <div class="mode-row">
+          <button type="button" class="mode-card" :class="{ active: semanticMode === 'local' }" @click="semanticMode = 'local'">
+            <strong>局部候选</strong>
+            <span>样式使用对应语义；缺少候选时可临时改派。</span>
+          </button>
+          <button type="button" class="mode-card" :class="{ active: semanticMode === 'global' }" @click="semanticMode = 'global'">
+            <strong>全局候选</strong>
+            <span>每个样式可使用所有语义候选色。</span>
+          </button>
+        </div>
+        <div class="number-grid">
+          <label>
+            <span>种群数</span>
+            <el-input-number v-model="population" :min="8" :max="200" :step="4" size="small" />
+          </label>
+          <label>
+            <span>迭代次数</span>
+            <el-input-number v-model="generations" :min="1" :max="200" :step="5" size="small" />
+          </label>
+        </div>
+        <div v-if="semanticMode === 'local'" class="semantic-list">
+          <div v-for="layer in currentScheme.layers" :key="layer.id" class="semantic-row">
+            <span>{{ layerName(layer.id) }}</span>
+            <el-select v-model="layerSemantics[layer.id]" size="small">
+              <el-option v-for="option in semanticOptions" :key="option.value" :label="option.label" :value="option.value" />
+            </el-select>
+          </div>
+        </div>
+      </div>
+      <template #footer>
+        <el-button :disabled="isGenerating" @click="dialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="isGenerating" @click="onGenerateSchemes">开始生成</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, provide, computed } from 'vue'
-import type mapboxgl from 'mapbox-gl'
 import { useI18n } from 'vue-i18n'
 import { ElMessage } from 'element-plus'
 import { storeToRefs } from 'pinia'
@@ -45,16 +87,30 @@ import MapStyle from '@/components/MapStyle.vue'
 import ObjectiveScoresPanel from '@/components/ObjectiveScoresPanel.vue'
 import { useColorSchemeStore } from '@/stores'
 import { schemeApi } from '@/api/scheme'
+import type { MapboxMapInstance } from '@/composables'
 
 const { t } = useI18n()
 
-const mapInstanceRef = ref<mapboxgl.Map | null>(null)
+const mapInstanceRef = ref<MapboxMapInstance | null>(null)
 provide('mapInstance', mapInstanceRef)
 
 const colorSchemeStore = useColorSchemeStore()
 const { currentScheme, lastPipelineJobId, schemeGenerationReady } = storeToRefs(colorSchemeStore)
 
 const isGenerating = ref(false)
+const dialogVisible = ref(false)
+const semanticMode = ref<'local' | 'global'>('local')
+const population = ref(40)
+const generations = ref(25)
+const layerSemantics = ref<Record<string, string>>({})
+const semanticOptions = [
+  { label: '底色', value: 'base' },
+  { label: '水体', value: 'water' },
+  { label: '路网', value: 'roadnet' },
+  { label: '建筑', value: 'architecture' },
+  { label: '绿地/土地', value: 'green' },
+  { label: '地标', value: 'landmark' },
+]
 const canGenerate = computed(
   () =>
     currentScheme.value.layers.length > 0 &&
@@ -68,6 +124,30 @@ const regenerateBlockedReason = computed(() => {
   if (!schemeGenerationReady.value) return t('mapStyle.generateBlockedNeedPipeline')
   return ''
 })
+
+function layerName(id: string): string {
+  const names: Record<string, string> = {
+    background: '背景',
+    water: '水体',
+    'road-level-1': '一级道路',
+    'road-level-2': '二级道路',
+    'road-level-3': '三级道路',
+    building: '建筑物',
+    landuse: '土地利用',
+  }
+  return names[id] || id
+}
+
+function openGenerateDialog() {
+  if (!canGenerate.value) {
+    ElMessage.warning(regenerateBlockedReason.value)
+    return
+  }
+  currentScheme.value.layers.forEach(layer => {
+    layerSemantics.value[layer.id] = layerSemantics.value[layer.id] || layer.semantic || 'green'
+  })
+  dialogVisible.value = true
+}
 
 async function onGenerateSchemes() {
   if (!currentScheme.value.layers.length) {
@@ -85,8 +165,13 @@ async function onGenerateSchemes() {
       currentScheme: currentScheme.value,
       count: 5,
       jobId: lastPipelineJobId.value || undefined,
+      population: population.value,
+      generations: generations.value,
+      semanticMode: semanticMode.value,
+      layerSemantics: semanticMode.value === 'local' ? layerSemantics.value : {},
     })
     colorSchemeStore.setColorSchemes(response.schemes)
+    dialogVisible.value = false
     ElMessage.success(t('mapStyle.generateSuccess', { count: response.schemes.length }))
   } catch (error) {
     console.error(error)
@@ -106,9 +191,10 @@ async function onGenerateSchemes() {
 }
 
 .navbar {
-  height: 100px;
-  background-color: #fefefe;
+  height: 88px;
+  background-color: #fff;
   flex-shrink: 0;
+  border-bottom: 1px solid #e7eaf0;
 }
 
 .main-content {
@@ -117,11 +203,11 @@ async function onGenerateSchemes() {
   flex-direction: row;
   overflow: hidden;
   min-height: 0;
-  background-color: #e0cece;
+  background-color: #f4f6f8;
 }
 
 .left-sidebar {
-  width: 300px;
+  width: 316px;
   flex-shrink: 0;
   padding: 12px;
   background-color: #fff;
@@ -136,16 +222,17 @@ async function onGenerateSchemes() {
 .map-container {
   flex-grow: 1;
   min-width: 0;
-  background-color: #eec9c9;
+  background-color: #edf1f5;
 }
 
 .right-sidebar {
-  width: 400px;
+  width: 392px;
   flex-shrink: 0;
-  background-color: #f0f0f0;
+  background-color: #fff;
   display: flex;
   flex-direction: column;
   min-height: 0;
+  border-left: 1px solid #e4e7ed;
 }
 
 .studio-toolbar {
@@ -154,7 +241,7 @@ async function onGenerateSchemes() {
   align-items: center;
   gap: 12px;
   padding: 10px 12px;
-  background: #eaeaea;
+  background: #fff;
   border-bottom: 1px solid #dcdfe6;
 }
 
@@ -172,5 +259,89 @@ async function onGenerateSchemes() {
 .map-style-fill {
   flex: 1;
   min-height: 0;
+}
+
+.dialog-head h3 {
+  margin: 0;
+  color: #111827;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.dialog-head p {
+  margin: 6px 0 0;
+  color: #667085;
+  font-size: 13px;
+}
+
+.dialog-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.mode-row,
+.number-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.mode-card {
+  padding: 14px;
+  border: 1px solid #dbe3ee;
+  border-radius: 10px;
+  background: #f8fafc;
+  text-align: left;
+  cursor: pointer;
+}
+
+.mode-card strong {
+  display: block;
+  margin-bottom: 6px;
+  color: #1f2937;
+  font-size: 14px;
+}
+
+.mode-card span {
+  color: #667085;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.mode-card.active {
+  border-color: #4264fb;
+  background: #eef3ff;
+  box-shadow: 0 0 0 3px rgba(66, 100, 251, 0.12);
+}
+
+.number-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  color: #344054;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.semantic-list {
+  border: 1px solid #e5eaf1;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.semantic-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 150px;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-bottom: 1px solid #eef2f6;
+  font-size: 13px;
+  color: #344054;
+}
+
+.semantic-row:last-child {
+  border-bottom: none;
 }
 </style>

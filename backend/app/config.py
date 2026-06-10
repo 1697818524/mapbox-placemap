@@ -3,8 +3,15 @@
 """
 import os
 import sys
+from pathlib import Path
 from typing import List
 from pydantic_settings import BaseSettings
+
+
+APP_DIR = Path(__file__).resolve().parent
+BACKEND_DIR = APP_DIR.parent
+PROJECT_DIR = BACKEND_DIR.parent
+WORKSPACE_DIR = PROJECT_DIR.parent
 
 
 class Settings(BaseSettings):
@@ -33,10 +40,10 @@ class Settings(BaseSettings):
     MAX_IMAGE_SIZE: int = 2048
 
     # 外部脚本配置（Day3）
-    PIPELINE_PYTHON_EXE: str = r"E:\conda\python.exe"
-    SHADOW_SCRIPT_PATH: str = r"e:\code\code.py"
-    ONEFORMER_SCRIPT_PATH: str = r"e:\code\OneFormer\hf_cityscapes_one_image_semantic.py"
-    ONEFORMER_MODEL_DIR: str = r"e:\code\models\oneformer_cityscapes_swin_large"
+    PIPELINE_PYTHON_EXE: str = sys.executable
+    SHADOW_SCRIPT_PATH: str = str(WORKSPACE_DIR / "code.py")
+    ONEFORMER_SCRIPT_PATH: str = str(WORKSPACE_DIR / "OneFormer" / "hf_cityscapes_one_image_semantic.py")
+    ONEFORMER_MODEL_DIR: str = str(WORKSPACE_DIR / "models" / "oneformer_cityscapes_swin_large")
     ONEFORMER_LOCAL_FILES_ONLY: bool = True
     ONEFORMER_DEVICE: str = "cuda"
 

@@ -7,11 +7,13 @@ import 'mapbox-gl/dist/mapbox-gl.css'
 import { MAPBOX_CONFIG, MAP_CONFIG } from '@/config'
 import { useMapStore } from '@/stores'
 
+export type MapboxMapInstance = any
+
 export function useMap(
   container: Ref<HTMLDivElement | null>,
-  mapRef?: Ref<mapboxgl.Map | null>,
+  mapRef?: Ref<MapboxMapInstance | null>,
 ) {
-  const map = ref<mapboxgl.Map | null>(null)
+  const map = ref<MapboxMapInstance | null>(null)
   const mapStore = useMapStore()
   let syncTimer: ReturnType<typeof setTimeout> | null = null
   let isApplyingStoreUpdate = false
@@ -25,7 +27,7 @@ export function useMap(
 
     mapboxgl.accessToken = MAPBOX_CONFIG.ACCESS_TOKEN
     try {
-      mapboxgl.setTelemetryEnabled(false)
+      ;(mapboxgl as any).setTelemetryEnabled?.(false)
     } catch {
       /* 忽略旧版本或不支持 */
     }
@@ -53,7 +55,7 @@ export function useMap(
     })
 
     // 地图错误处理
-    map.value.on('error', e => {
+    map.value.on('error', (e: unknown) => {
       console.error('地图加载错误:', e)
     })
 

@@ -15,6 +15,7 @@ from app.services import color_objectives
 from app.services.scheme_generate import (
     _apply_palette_to_scheme,
     _load_palettes_from_cluster_dir,
+    _normalize_scheme_layers,
     _rgb_to_hex,
     default_color_scheme,
 )
@@ -180,7 +181,7 @@ def run_nsga2_schemes(
         return tuple(random.randrange(0, bounds[i]) for i in range(len(semantics)))
 
     pop = [random_individual() for _ in range(population)]
-    base = base_scheme or default_color_scheme()
+    base = _normalize_scheme_layers(base_scheme) if base_scheme else default_color_scheme()
 
     for _gen in range(generations):
         objs = [_evaluate(ind, semantics, palettes, csv_paths, background_semantic) for ind in pop]

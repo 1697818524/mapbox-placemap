@@ -82,8 +82,12 @@ export default {
     green: 'Green/Land',
     labels: 'Labels',
     layers: {
+      background: 'Background',
       water: 'Water',
       waterway: 'Waterway',
+      roadLevel1: 'Level 1 Road',
+      roadLevel2: 'Level 2 Road',
+      roadLevel3: 'Level 3 Road',
       roadPedestrian: 'Pedestrian',
       roadPath: 'Path',
       roadMinor: 'Minor Road',
@@ -116,6 +120,7 @@ export default {
     layerIdLabel: 'Layer id',
     semanticsUnknown: '—',
     semantics: {
+      base: 'Base',
       architecture: 'Architecture',
       roadnet: 'Road network',
       green: 'Green / land',

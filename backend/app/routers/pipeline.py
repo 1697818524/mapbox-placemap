@@ -35,6 +35,7 @@ from app.services.shadow_process import ShadowProcessService
 from app.services.superpixel import SuperpixelService
 from app.services.scheme_generate import SchemeGenerateService, default_color_scheme
 from app.services.ga_optimize import run_nsga2_schemes
+from app.utils.image_io import imread_color
 
 router = APIRouter(prefix="/api/pipeline", tags=["Pipeline"])
 
@@ -172,6 +173,63 @@ def _resolve_image_path(location: str, image_id: str) -> str | None:
     if not matches:
         return None
     return str(matches[0])
+
+
+def _process_superpixel_semantic_one(
+    image_id: str,
+    src: str,
+    sem_path: str,
+    dirs: dict[str, str],
+    slic_n_segments: int,
+    slic_compactness: float,
+) -> tuple[str, list[dict], list[ArtifactItem]]:
+    """Run coarse semantic assignment + SLIC for one image."""
+    artifacts: list[ArtifactItem] = []
+
+    sem_raw = imread_color(sem_path)
+    if sem_raw is None:
+        raise FileNotFoundError(f"Semantic image not found: {sem_path}")
+    sem_rgb = cv2.cvtColor(sem_raw, cv2.COLOR_BGR2RGB)
+    train_id_map = semantic_assign_service.decode_cityscapes_color_to_train_id(sem_rgb)
+    coarse_map = semantic_assign_service.to_coarse_map(train_id_map)
+    coarse_id_out = str(Path(dirs["semantic_5class"]) / f"{image_id}_id.png")
+    coarse_color_out = str(Path(dirs["semantic_5class"]) / f"{image_id}_color.png")
+    semantic_assign_service.save_coarse_outputs(coarse_map, coarse_id_out, coarse_color_out)
+    artifacts.append(
+        ArtifactItem(
+            artifact_id=f"art_{uuid4().hex[:10]}",
+            type=ArtifactType.SEMANTIC_5CLASS_ID,
+            stage=PipelineStageName.SUPERPIXEL,
+            path=coarse_id_out,
+            image_id=image_id,
+        )
+    )
+
+    segments = superpixel_service.run_slic(
+        src,
+        n_segments=slic_n_segments,
+        compactness=slic_compactness,
+    )
+    labels_npy = str(Path(dirs["superpixel"]) / f"{image_id}_labels.npy")
+    labels_png = str(Path(dirs["superpixel"]) / f"{image_id}_labels.png")
+    superpixel_service.save_segments(segments, labels_npy, labels_png)
+    artifacts.append(
+        ArtifactItem(
+            artifact_id=f"art_{uuid4().hex[:10]}",
+            type=ArtifactType.SUPERPIXEL_LABEL,
+            stage=PipelineStageName.SUPERPIXEL,
+            path=labels_npy,
+            image_id=image_id,
+        )
+    )
+
+    records = semantic_assign_service.assign_superpixel_semantics(
+        image_path=src,
+        segments=segments,
+        coarse_map=coarse_map,
+        image_id=image_id,
+    )
+    return image_id, records, artifacts
 
 
 def _execute_pipeline_job(job_id: str) -> None:
@@ -337,82 +395,75 @@ def _execute_pipeline_job(job_id: str) -> None:
             PipelineStageName.SUPERPIXEL,
             PipelineJobStatus.RUNNING,
             0,
-            "Running superpixel and semantic assignment",
+            "Running superpixel and semantic assignment (parallel)",
         )
-        for idx, (image_id, _) in enumerate(resolved, start=1):
-            try:
-                src = shadow_outputs.get(image_id) or _resolve_image_path(job.location, image_id)
-                sem_path = semantic_outputs.get(image_id)
-                if not src or not sem_path:
-                    continue
+        superpixel_inputs = []
+        for image_id, _ in resolved:
+            src = shadow_outputs.get(image_id) or _resolve_image_path(job.location, image_id)
+            sem_path = semantic_outputs.get(image_id)
+            if src and sem_path:
+                superpixel_inputs.append((image_id, src, sem_path))
 
-                # decode semantic color to train id and coarse map
-                sem_rgb = cv2.cvtColor(cv2.imread(sem_path, cv2.IMREAD_COLOR), cv2.COLOR_BGR2RGB)
-                train_id_map = semantic_assign_service.decode_cityscapes_color_to_train_id(sem_rgb)
-                coarse_map = semantic_assign_service.to_coarse_map(train_id_map)
-                coarse_id_out = str(Path(dirs["semantic_5class"]) / f"{image_id}_id.png")
-                coarse_color_out = str(Path(dirs["semantic_5class"]) / f"{image_id}_color.png")
-                semantic_assign_service.save_coarse_outputs(coarse_map, coarse_id_out, coarse_color_out)
-                job_repository.add_artifact(
-                    job_id,
-                    ArtifactItem(
-                        artifact_id=f"art_{uuid4().hex[:10]}",
-                        type=ArtifactType.SEMANTIC_5CLASS_ID,
-                        stage=PipelineStageName.SUPERPIXEL,
-                        path=coarse_id_out,
-                        image_id=image_id,
-                    ),
-                )
+        if not superpixel_inputs:
+            job_repository.update_stage(
+                job_id,
+                PipelineStageName.SUPERPIXEL,
+                PipelineJobStatus.FAILED,
+                0,
+                "No semantic outputs available for superpixel stage",
+            )
+            job_repository.update_job_status(
+                job_id,
+                PipelineJobStatus.FAILED,
+                error_code="PIPELINE_STAGE_FAILED",
+                error_message="Superpixel failed: no semantic outputs available",
+            )
+            return
 
-                segments = superpixel_service.run_slic(
-                    src,
-                    n_segments=job.options.slic_n_segments,
-                    compactness=job.options.slic_compactness,
-                )
-                labels_npy = str(Path(dirs["superpixel"]) / f"{image_id}_labels.npy")
-                labels_png = str(Path(dirs["superpixel"]) / f"{image_id}_labels.png")
-                superpixel_service.save_segments(segments, labels_npy, labels_png)
-                job_repository.add_artifact(
-                    job_id,
-                    ArtifactItem(
-                        artifact_id=f"art_{uuid4().hex[:10]}",
-                        type=ArtifactType.SUPERPIXEL_LABEL,
-                        stage=PipelineStageName.SUPERPIXEL,
-                        path=labels_npy,
-                        image_id=image_id,
-                    ),
-                )
-
-                records = semantic_assign_service.assign_superpixel_semantics(
-                    image_path=src,
-                    segments=segments,
-                    coarse_map=coarse_map,
-                    image_id=image_id,
-                )
-                all_records.extend(records)
-
-                job_repository.update_stage(
-                    job_id,
-                    PipelineStageName.SUPERPIXEL,
-                    PipelineJobStatus.RUNNING,
-                    (idx / total) * 100.0,
-                    "Running superpixel and semantic assignment",
-                )
-            except Exception as exc:
-                job_repository.update_stage(
-                    job_id,
-                    PipelineStageName.SUPERPIXEL,
-                    PipelineJobStatus.FAILED,
-                    (idx / total) * 100.0,
-                    f"Superpixel stage failed: {exc}",
-                )
-                job_repository.update_job_status(
-                    job_id,
-                    PipelineJobStatus.FAILED,
-                    error_code="PIPELINE_STAGE_FAILED",
-                    error_message=f"Superpixel failed: {exc}",
-                )
-                return
+        max_workers = max(1, min(len(superpixel_inputs), 6, os.cpu_count() or 4))
+        completed = 0
+        try:
+            with ThreadPoolExecutor(max_workers=max_workers) as pool:
+                futures = [
+                    pool.submit(
+                        _process_superpixel_semantic_one,
+                        image_id,
+                        src,
+                        sem_path,
+                        dirs,
+                        job.options.slic_n_segments,
+                        job.options.slic_compactness,
+                    )
+                    for image_id, src, sem_path in superpixel_inputs
+                ]
+                for fut in as_completed(futures):
+                    _, records, artifacts = fut.result()
+                    all_records.extend(records)
+                    for artifact in artifacts:
+                        job_repository.add_artifact(job_id, artifact)
+                    completed += 1
+                    job_repository.update_stage(
+                        job_id,
+                        PipelineStageName.SUPERPIXEL,
+                        PipelineJobStatus.RUNNING,
+                        (completed / len(superpixel_inputs)) * 100.0,
+                        "Running superpixel and semantic assignment (parallel)",
+                    )
+        except Exception as exc:
+            job_repository.update_stage(
+                job_id,
+                PipelineStageName.SUPERPIXEL,
+                PipelineJobStatus.FAILED,
+                100.0,
+                f"Superpixel stage failed: {exc}",
+            )
+            job_repository.update_job_status(
+                job_id,
+                PipelineJobStatus.FAILED,
+                error_code="PIPELINE_STAGE_FAILED",
+                error_message=f"Superpixel failed: {exc}",
+            )
+            return
 
         # save records
         if all_records:

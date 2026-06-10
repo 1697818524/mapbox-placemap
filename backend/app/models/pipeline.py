@@ -43,10 +43,10 @@ class PipelineOptions(BaseModel):
     enable_cluster: bool = True
     enable_scheme: bool = True
     semantic_model: str = "oneformer_cityscapes"
-    slic_n_segments: int = 400
+    slic_n_segments: int = 240
     slic_compactness: float = 10.0
     cluster_k_min: int = 6
-    cluster_k_max: int = 20
+    cluster_k_max: int = 12
     scheme_count: int = 5
     # NSGA-II 双目标：和谐度 + 地方表征性（需 cluster 产物）
     enable_ga_scheme: bool = False

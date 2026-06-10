@@ -109,6 +109,10 @@ export const useColorSchemeStore = defineStore('colorScheme', () => {
     const i = Math.min(Math.max(0, selectedSchemeIndex.value), list.length - 1)
     selectedSchemeIndex.value = i
     const raw = list[i]
+    if (!raw) {
+      currentScheme.value = { layers: [] }
+      return
+    }
     currentScheme.value = {
       layers: raw.layers.map(l => ({
         id: l.id,
