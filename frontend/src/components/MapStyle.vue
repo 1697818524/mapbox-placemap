@@ -89,9 +89,18 @@
           <div v-for="layer in modelLayers" :key="layer.id" class="semantic-row">
             <span>{{ getLayerName(layer.nameKey) }}</span>
             <el-select v-model="layerSemanticDraft[layer.id]" size="small">
-              <el-option v-for="option in semanticOptions" :key="option.value" :label="option.label" :value="option.value" />
+              <el-option
+                v-for="option in semanticOptionsWithState"
+                :key="option.value"
+                :label="option.label"
+                :value="option.value"
+                :disabled="option.disabled"
+              />
             </el-select>
           </div>
+          <p v-if="availableSemantics.length" class="semantic-hint">
+            灰色语义表示当前样本集没有候选色。可用候选：{{ availableSemantics.join('、') }}
+          </p>
         </div>
       </div>
 
@@ -161,6 +170,7 @@ import {
 } from '@/config/mapStyleLayers'
 import { useColorSchemeStore, type ColorScheme, type ColorSchemeItem } from '@/stores'
 import { schemeApi } from '@/api/scheme'
+import { pipelineApi } from '@/api/pipeline'
 import type { MapboxMapInstance } from '@/composables'
 
 const props = withDefaults(
@@ -246,6 +256,7 @@ const schemeDialogVisible = ref(false)
 const schemeMode = ref<'local' | 'global'>('local')
 const schemePopulation = ref(40)
 const schemeGenerations = ref(25)
+const availableSemantics = ref<string[]>([])
 const layerSemanticDraft = reactive<Record<string, string>>({})
 const semanticOptions = [
   { label: '底色', value: 'base' },
@@ -255,6 +266,13 @@ const semanticOptions = [
   { label: '绿地/土地', value: 'green' },
   { label: '地标', value: 'landmark' },
 ]
+const semanticOptionsWithState = computed(() => {
+  const available = new Set(availableSemantics.value)
+  return semanticOptions.map(option => ({
+    ...option,
+    disabled: available.size > 0 && !available.has(option.value),
+  }))
+})
 const canGenerate = computed(() => props.footerMode === 'generate' && colorSchemeStore.currentScheme.layers.length > 0)
 const generateBlockedReason = computed(() => {
   if (props.footerMode !== 'generate') return ''
@@ -282,13 +300,29 @@ function syncSemanticDraft() {
   })
 }
 
-function openSchemeDialog() {
+async function loadAvailableSemantics() {
+  const jobId = colorSchemeStore.lastPipelineJobId
+  if (!jobId) {
+    availableSemantics.value = []
+    return
+  }
+  try {
+    const response = await pipelineApi.getJobPaletteSemantics(jobId)
+    availableSemantics.value = response.semantics
+  } catch (error) {
+    console.warn('Failed to load palette semantics:', error)
+    availableSemantics.value = []
+  }
+}
+
+async function openSchemeDialog() {
   const currentScheme = colorSchemeStore.currentScheme
   if (!currentScheme.layers.length) {
     ElMessage.warning(t('mapStyle.noCurrentScheme'))
     return
   }
   syncSemanticDraft()
+  await loadAvailableSemantics()
   schemeDialogVisible.value = true
 }
 
@@ -848,6 +882,15 @@ onMounted(() => {
 
 .semantic-row:last-child {
   border-bottom: none;
+}
+
+.semantic-hint {
+  margin: 0;
+  padding: 10px 14px;
+  color: #667085;
+  font-size: 12px;
+  line-height: 1.5;
+  background: #fbfcfe;
 }
 
 .studio-collapse.category-section {

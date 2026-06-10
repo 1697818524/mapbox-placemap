@@ -59,6 +59,11 @@ export interface PipelineSchemesResponse {
   schemes: ColorSchemeWithId[]
 }
 
+export interface PipelinePaletteSemanticsResponse {
+  job_id: string
+  semantics: string[]
+}
+
 export interface PipelineJob {
   job_id: string
   status: PipelineJobStatus
@@ -129,6 +134,15 @@ export const pipelineApi = {
   },
 
   /** 异步执行，返回 202 与当前任务快照 */
+  async getJobPaletteSemantics(jobId: string): Promise<PipelinePaletteSemanticsResponse> {
+    const res = await fetch(
+      `${backendBase()}/api/pipeline/jobs/${encodeURIComponent(jobId)}/palette-semantics`,
+      { signal: abortAfter(API_CONFIG.TIMEOUT) },
+    )
+    if (!res.ok) throw new Error(await parseError(res))
+    return res.json()
+  },
+
   async runJob(jobId: string): Promise<PipelineJob> {
     const res = await fetch(`${backendBase()}/api/pipeline/jobs/${encodeURIComponent(jobId)}/run`, {
       method: 'POST',

@@ -106,6 +106,14 @@ async def get_pipeline_job_schemes(job_id: str) -> PipelineSchemesResponse:
     return PipelineSchemesResponse(job_id=job_id, schemes=schemes)
 
 
+@router.get("/jobs/{job_id}/palette-semantics", summary="读取任务调色板候选语义")
+async def get_pipeline_palette_semantics(job_id: str) -> dict[str, list[str] | str]:
+    job = job_repository.get_job(job_id)
+    if not job:
+        _raise_job_not_found(job_id)
+    return {"job_id": job_id, "semantics": _palette_semantics(job_id)}
+
+
 @router.post("/jobs/{job_id}/mock-start", response_model=PipelineJob, summary="模拟启动任务（开发调试）")
 async def mock_start_job(job_id: str) -> PipelineJob:
     job = job_repository.update_job_status(job_id, PipelineJobStatus.RUNNING)
@@ -119,6 +127,24 @@ def _palette_csv_count(job_id: str) -> int:
     if not cluster_dir.is_dir():
         return 0
     return len(list(cluster_dir.glob("palette_*.csv")))
+
+
+def _palette_semantics(job_id: str) -> list[str]:
+    cluster_dir = Path("data/jobs") / job_id / "cluster"
+    if not cluster_dir.is_dir():
+        return []
+    semantics: set[str] = set()
+    for csv_path in sorted(cluster_dir.glob("palette_*.csv")):
+        try:
+            with open(csv_path, newline="", encoding="utf-8") as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    sem = (row.get("semantic") or "").strip()
+                    if sem:
+                        semantics.add(sem)
+        except OSError:
+            continue
+    return sorted(semantics)
 
 
 def _process_shadow_semantic_one(

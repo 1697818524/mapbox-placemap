@@ -63,9 +63,18 @@
           <div v-for="layer in currentScheme.layers" :key="layer.id" class="semantic-row">
             <span>{{ layerName(layer.id) }}</span>
             <el-select v-model="layerSemantics[layer.id]" size="small">
-              <el-option v-for="option in semanticOptions" :key="option.value" :label="option.label" :value="option.value" />
+              <el-option
+                v-for="option in semanticOptionsWithState"
+                :key="option.value"
+                :label="option.label"
+                :value="option.value"
+                :disabled="option.disabled"
+              />
             </el-select>
           </div>
+          <p v-if="availableSemantics.length" class="semantic-hint">
+            灰色语义表示当前样本集没有候选色。可用候选：{{ availableSemantics.join('、') }}
+          </p>
         </div>
       </div>
       <template #footer>
@@ -87,6 +96,7 @@ import MapStyle from '@/components/MapStyle.vue'
 import ObjectiveScoresPanel from '@/components/ObjectiveScoresPanel.vue'
 import { useColorSchemeStore } from '@/stores'
 import { schemeApi } from '@/api/scheme'
+import { pipelineApi } from '@/api/pipeline'
 import type { MapboxMapInstance } from '@/composables'
 
 const { t } = useI18n()
@@ -102,6 +112,7 @@ const dialogVisible = ref(false)
 const semanticMode = ref<'local' | 'global'>('local')
 const population = ref(40)
 const generations = ref(25)
+const availableSemantics = ref<string[]>([])
 const layerSemantics = ref<Record<string, string>>({})
 const semanticOptions = [
   { label: '底色', value: 'base' },
@@ -111,6 +122,13 @@ const semanticOptions = [
   { label: '绿地/土地', value: 'green' },
   { label: '地标', value: 'landmark' },
 ]
+const semanticOptionsWithState = computed(() => {
+  const available = new Set(availableSemantics.value)
+  return semanticOptions.map(option => ({
+    ...option,
+    disabled: available.size > 0 && !available.has(option.value),
+  }))
+})
 const canGenerate = computed(
   () =>
     currentScheme.value.layers.length > 0 &&
@@ -138,7 +156,22 @@ function layerName(id: string): string {
   return names[id] || id
 }
 
-function openGenerateDialog() {
+async function loadAvailableSemantics() {
+  const jobId = lastPipelineJobId.value
+  if (!jobId) {
+    availableSemantics.value = []
+    return
+  }
+  try {
+    const response = await pipelineApi.getJobPaletteSemantics(jobId)
+    availableSemantics.value = response.semantics
+  } catch (error) {
+    console.warn('Failed to load palette semantics:', error)
+    availableSemantics.value = []
+  }
+}
+
+async function openGenerateDialog() {
   if (!canGenerate.value) {
     ElMessage.warning(regenerateBlockedReason.value)
     return
@@ -146,6 +179,7 @@ function openGenerateDialog() {
   currentScheme.value.layers.forEach(layer => {
     layerSemantics.value[layer.id] = layerSemantics.value[layer.id] || layer.semantic || 'green'
   })
+  await loadAvailableSemantics()
   dialogVisible.value = true
 }
 
@@ -343,5 +377,14 @@ async function onGenerateSchemes() {
 
 .semantic-row:last-child {
   border-bottom: none;
+}
+
+.semantic-hint {
+  margin: 0;
+  padding: 10px 14px;
+  color: #667085;
+  font-size: 12px;
+  line-height: 1.5;
+  background: #fbfcfe;
 }
 </style>

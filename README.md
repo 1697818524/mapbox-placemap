@@ -1,163 +1,173 @@
-# 地方感地图生成项目
+# PlaceMap 项目文档
 
-## 项目简介
+PlaceMap 是一个“地方感地图生成”应用：用户搜索地点、收集当地图片或上传自己的图片，系统从图片集中提取语义与色彩候选，再把候选色迁移到 Mapbox 地图样式上，生成多套可比较的地方感配色方案。
 
-本项目是一个基于地理视觉特征的地方感地图生成系统。系统通过搜索地点获取相关风景图片，对图片进行颜色分析提取经典配色方案，并运用双目标遗传算法生成优化的地图配色方案，实现基于地方视觉特征的地图样式个性化定制。
+## 当前项目逻辑
 
-### 核心流程
+核心流程如下：
 
-1. **地点搜索**：用户搜索目标地点，系统通过 Mapbox Geocoding API 获取地理位置信息
-2. **图片获取**：基于搜索地点，系统从百度图片搜索获取相关风景图片
-3. **配色提取**：对获取的风景图片进行颜色分析，提取经典配色方案
-4. **方案生成**：运用双目标遗传算法，基于提取的配色方案生成多个优化的地图配色方案
-5. **样式应用**：将生成的配色方案应用到 Mapbox 地图的各个图层，实现个性化地图展示
+1. 地点搜索：前端通过 Mapbox 定位地点并显示地图。
+2. 图片集构建：用户可以搜索当地图片，也可以上传本地图片；两类图片会合并为同一个样本图片集。
+3. 样本入库：后端把远程图片下载到 `backend/data/ingest/{location}/`，上传图片也保存到同一类目录，并返回 `image_ids`。
+4. Pipeline 构建：后端创建 pipeline job，按配置执行阴影处理、语义分割、超像素、语义分配、调色板聚类、方案生成等阶段。
+5. 样式生成：前端点击“生成方案”后弹出参数面板，用户可设置种群数、迭代次数，以及“局部/全局”候选色使用方式。
+6. 地图应用：方案生成后，前端把方案颜色写入 Mapbox style 的目标图层，右侧样式面板和地图同步变化。
 
-## 项目结构
+当前参与方案生成的主要地图样式要素是：
 
-```
-├── frontend/                    # 前端项目（Vue 3 + TypeScript）
-│   ├── src/                    # 源代码目录
-│   │   ├── api/                # API 请求模块
-│   │   ├── components/         # Vue 组件
-│   │   ├── composables/        # 组合式函数
-│   │   ├── stores/             # Pinia 状态管理
-│   │   └── ...
-│   └── package.json
-│
-├── backend/                    # 后端项目（FastAPI + Python）
-│   ├── app/                    # 应用主目录
-│   │   ├── main.py            # FastAPI 应用入口
-│   │   ├── config.py           # 配置文件
-│   │   ├── models/             # 数据模型（Pydantic）
-│   │   │   ├── image.py       # 图片相关模型
-│   │   │   └── scheme.py      # 配色方案模型
-│   │   ├── routers/           # API 路由
-│   │   │   ├── images.py      # 图片搜索路由
-│   │   │   └── schemes.py     # 配色方案生成路由
-│   │   ├── services/          # 业务逻辑服务层
-│   │   │   ├── image_search.py      # 图片搜索服务
-│   │   │   ├── color_extraction.py  # 颜色提取服务
-│   │   │   └── genetic_algorithm.py # 双目标遗传算法服务
-│   │   └── utils/             # 工具函数
-│   │       ├── image_utils.py # 图片处理工具
-│   │       └── color_utils.py # 颜色处理工具
-│   ├── requirements.txt        # Python 依赖包
-│   └── ARCHITECTURE.md         # 后端架构文档
-│
-└── README.md                   # 项目说明
-```
+| 控制项 | 前端 id | 默认语义 | Mapbox 目标 |
+| --- | --- | --- | --- |
+| 背景 | `background` | `base` | 背景/陆地底色 |
+| 水体 | `water` | `water` | 水面、水道 |
+| 一级道路 | `road-level-1` | `roadnet` | 高速、主干路 |
+| 二级道路 | `road-level-2` | `roadnet` | 二级/三级道路、街道 |
+| 三级道路 | `road-level-3` | `roadnet` | 小路、人行道、路径 |
+| 建筑 | `building` | `architecture` | 建筑面 |
+| 绿地/土地 | `landuse` | `green` | 土地利用、绿地 |
 
-> 📖 详细的前端架构设计请参考 [frontend/ARCHITECTURE.md](./frontend/ARCHITECTURE.md)  
-> 📖 详细的后端架构设计请参考 [backend/ARCHITECTURE.md](./backend/ARCHITECTURE.md)
-
-## 快速开始
-
-### 🚀 一键启动（推荐）
-
-在项目根目录执行以下命令，可同时启动前后端：
-
-1. **安装根目录依赖**（首次运行需要）：
-```bash
-npm install
-```
-
-2. **安装前后端依赖**（首次运行需要）：
-```bash
-npm run install:all
-```
-
-3. **同时启动前后端**：
-```bash
-npm run dev
-```
-
-启动后：
-- 📱 **前端地址**: http://localhost:3000
-- 🔧 **后端地址**: http://localhost:8000
-- 📚 **API文档**: http://localhost:8000/docs
-
-> 💡 使用 `concurrently` 工具同时运行前后端，日志会以不同颜色区分前后端输出
-
-### 📦 分别启动（可选）
-
-如果需要单独启动前后端，可以按照以下方式：
-
-#### 后端服务
-
-1. 进入后端目录：
-```bash
-cd backend
-```
-
-2. 安装依赖：
-```bash
-pip install -r requirements.txt
-```
-
-3. 启动服务：
-```bash
-python -m app.main
-# 或
-uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-```
-
-服务将在 http://localhost:8000 启动
-
-API 文档：
-- Swagger UI: http://localhost:8000/docs
-- ReDoc: http://localhost:8000/redoc
-
-#### 前端项目
-
-1. 进入前端目录：
-```bash
-cd frontend
-```
-
-2. 安装依赖：
-```bash
-npm install
-```
-
-3. 配置环境变量（可选）：
-创建 `.env` 文件：
-```env
-VITE_API_BASE_URL=http://localhost:8000
-VITE_MAPBOX_TOKEN=your_mapbox_token_here
-```
-
-4. 启动开发服务器：
-```bash
-npm run dev
-```
-
-前端将在 http://localhost:3000 启动
-
-## 功能特性
-
-- 🗺️ 地图展示和交互（基于 Mapbox）
-- 🎨 地图样式自定义（颜色方案配置）
-- 🔍 地点搜索（Mapbox Geocoding）
-- 🖼️ 图片搜索（百度图片搜索）
-- 🌐 国际化支持（中文/英文）
+标签图层默认不参与方案生成。土地覆盖、国家公园等较杂要素目前隐藏，不作为主流程要素。
 
 ## 技术栈
 
-### 前端
-- Vue 3
-- TypeScript
-- Element Plus
-- Mapbox GL JS
-- Pinia
-- Vue I18n
+- 前端：Vue 3、TypeScript、Vite、Pinia、Element Plus、Mapbox GL JS
+- 后端：FastAPI、Pydantic、OpenCV、Pillow、scikit-image、scikit-learn
+- 运行编排：根目录 `npm` scripts 使用 `concurrently` 同时启动前后端
 
-### 后端
-- FastAPI - Web 框架
-- Python 3.8+
-- httpx - HTTP 客户端（图片搜索）
-- BeautifulSoup4 - HTML 解析
-- Pillow (PIL) - 图片处理
-- NumPy - 数值计算
-- scikit-learn - K-means 聚类（颜色提取）
-- pymoo - 多目标优化算法（遗传算法）
+## 目录结构
+
+```text
+mapbox-placemap/
+├─ README.md                 # 项目结构、运行方式、开发约定
+├─ API.md                    # 接口文档；接口改动时必须同步维护
+├─ PLAN.md                   # 功能计划/阶段记录
+├─ START.md                  # 旧启动说明，可逐步收敛到 README
+├─ package.json              # 根目录统一安装/启动脚本
+├─ backend/
+│  ├─ requirements.txt       # Python 依赖
+│  ├─ data/
+│  │  ├─ ingest/             # 入库图片
+│  │  └─ jobs/               # pipeline job 产物
+│  └─ app/
+│     ├─ main.py             # FastAPI 入口，注册 images/pipeline/schemes 路由
+│     ├─ config.py           # 后端配置和外部模型/脚本路径
+│     ├─ models/             # Pydantic 请求/响应模型
+│     ├─ routers/            # API 路由
+│     ├─ repositories/       # job 元数据与产物索引
+│     ├─ services/           # 图片搜索、入库、语义、聚类、方案生成等业务逻辑
+│     └─ utils/              # 图片读取等工具
+└─ frontend/
+   ├─ package.json
+   ├─ vite.config.ts         # Vite 配置，开发环境代理 /api 到 127.0.0.1:8000
+   └─ src/
+      ├─ api/                # 前端接口封装
+      ├─ components/         # 地图、样式面板、图片集等组件
+      ├─ config/             # API base、Mapbox、样式图层配置
+      ├─ stores/             # Pinia 状态
+      ├─ views/              # 页面
+      └─ router/             # 前端路由
+```
+
+## 环境准备
+
+建议使用 Node.js 18+ 和 Python 3.10+。
+
+首次安装：
+
+```powershell
+cd D:\任务\JSJ\mapbox-placemap
+npm install
+npm run install:backend
+npm run install:frontend
+```
+
+如果需要单独安装：
+
+```powershell
+cd D:\任务\JSJ\mapbox-placemap\backend
+pip install -r requirements.txt
+
+cd D:\任务\JSJ\mapbox-placemap\frontend
+npm install
+```
+
+## 运行方式
+
+推荐从项目根目录同时启动前后端：
+
+```powershell
+cd D:\任务\JSJ\mapbox-placemap
+npm run dev
+```
+
+默认地址：
+
+- 前端：`http://127.0.0.1:3000/`
+- 后端：`http://127.0.0.1:8000/`
+- 后端 OpenAPI：`http://127.0.0.1:8000/docs`
+
+也可以分开启动：
+
+```powershell
+cd D:\任务\JSJ\mapbox-placemap\backend
+python -m app.main
+
+cd D:\任务\JSJ\mapbox-placemap\frontend
+npm run dev
+```
+
+前端开发环境通过 `frontend/vite.config.ts` 把 `/api` 代理到 `http://127.0.0.1:8000`。如果生产环境需要指定后端地址，设置：
+
+```powershell
+$env:VITE_API_BASE_URL="http://127.0.0.1:8000"
+```
+
+## 构建和检查
+
+前端构建：
+
+```powershell
+cd D:\任务\JSJ\mapbox-placemap\frontend
+npm run build
+```
+
+后端语法检查：
+
+```powershell
+cd D:\任务\JSJ\mapbox-placemap\backend
+python -m compileall app
+```
+
+## 关键配置
+
+后端配置在 `backend/app/config.py`：
+
+- `HOST` / `PORT`：后端监听地址和端口，默认 `0.0.0.0:8000`
+- `CORS_ORIGINS`：允许访问后端的前端地址
+- `PIPELINE_PYTHON_EXE`：执行外部脚本的 Python
+- `SHADOW_SCRIPT_PATH`：阴影处理脚本路径
+- `ONEFORMER_SCRIPT_PATH`：语义分割脚本路径
+- `ONEFORMER_MODEL_DIR`：OneFormer 本地模型目录
+- `ONEFORMER_DEVICE`：默认 `cuda`
+
+前端地图样式配置在：
+
+- `frontend/src/config/mapStyleLayers.ts`：右侧样式面板显示哪些地图要素，以及它们对应哪些 Mapbox layer。
+- `frontend/src/config/placemapSemantics.ts`：前端样式 id 到后端语义的映射。
+- `frontend/src/config/apiBase.ts`：前端请求后端的 base URL。
+
+## 开发约定
+
+1. 接口变更必须同步更新 `API.md`。
+2. 新增或改名地图样式要素时，同时检查：
+   - `frontend/src/config/mapStyleLayers.ts`
+   - `frontend/src/config/placemapSemantics.ts`
+   - `backend/app/services/scheme_generate.py`
+   - `API.md` 中的方案生成字段说明
+3. Pipeline 产物路径和字段变化时，同时检查：
+   - `backend/app/models/pipeline.py`
+   - `backend/app/routers/pipeline.py`
+   - `frontend/src/api/pipeline.ts`
+   - `API.md`
+4. 前端样式调整后尽量在 `http://127.0.0.1:3000/` 真实查看，特别是地图和右侧样式面板是否同步。
+5. 不要把 `backend/data/jobs/` 和 `backend/data/ingest/` 中的大量运行产物提交到仓库，除非明确需要示例数据。
 
