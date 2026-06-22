@@ -14,6 +14,7 @@ from app.models.scheme import (
     ColorSchemeWithId,
     SchemeScores,
 )
+from app.services import color_objectives
 
 # 与前端 MapStyle.vue 可配置图层 id 一致
 SCHEME_LAYER_ORDER: Tuple[str, ...] = (
@@ -248,6 +249,47 @@ def _readability_score(layers: List[ColorSchemeItem]) -> float:
     return 0.5
 
 
+def _background_hex_from_layers(layers: List[ColorSchemeItem]) -> str:
+    bg = next((x.color for x in layers if x.id == "background"), None)
+    return bg or SEMANTIC_DEFAULT_HEX["base"]
+
+
+def _layers_to_objective_palette(layers: List[ColorSchemeItem]) -> Dict[str, List[Tuple[str, float]]]:
+    palette: Dict[str, List[Tuple[str, float]]] = {}
+    for item in layers:
+        if item.id == "background":
+            continue
+        sem = _layer_semantic(item)
+        if not sem:
+            continue
+        palette.setdefault(sem, []).append((item.color, max(float(item.weight or 0.0), 1.0)))
+    return palette
+
+
+def _dual_objective_scores(layers: List[ColorSchemeItem], cluster_dir: Optional[str]) -> Tuple[float, Optional[float]]:
+    foreground = [item for item in layers if item.id != "background"]
+    colors = [item.color for item in foreground]
+    weights = [max(float(item.weight or 0.0), 1.0) for item in foreground]
+    try:
+        harmony = color_objectives.harmony_score_from_hexes(colors, weights)
+    except Exception:
+        harmony = 0.0
+
+    if not cluster_dir:
+        return harmony, None
+
+    try:
+        place = color_objectives.place_representativeness_score(
+            _layers_to_objective_palette(layers),
+            color_objectives.build_cluster_csv_paths(cluster_dir),
+            background_semantic="base",
+            background_hex=_background_hex_from_layers(layers),
+        )
+        return harmony, float(place["overall"])
+    except Exception:
+        return harmony, 0.0
+
+
 def _layer_semantic(item: ColorSchemeItem) -> Optional[str]:
     if item.semantic:
         return item.semantic
@@ -352,7 +394,14 @@ class SchemeGenerateService:
                 sem_fit = _semantic_fit_score(palettes, chosen)
                 read = _readability_score(layers)
                 div = min(1.0, i / max(count - 1, 1)) if count > 1 else 1.0
-                scores = SchemeScores(semantic_fit=sem_fit, readability=read, diversity=div)
+                harmony, place = _dual_objective_scores(layers, cluster_dir)
+                scores = SchemeScores(
+                    semantic_fit=sem_fit,
+                    readability=read,
+                    diversity=div,
+                    harmony=harmony,
+                    place_representativeness=place,
+                )
                 sid = f"scheme_job_{job_id or 'local'}_rule_{i:02d}"
             else:
                 layers = [
@@ -364,10 +413,13 @@ class SchemeGenerateService:
                     )
                     for x in base.layers
                 ]
+                harmony, place = _dual_objective_scores(layers, cluster_dir)
                 scores = SchemeScores(
                     semantic_fit=0.4,
                     readability=_readability_score(layers),
                     diversity=min(1.0, i / max(count - 1, 1)) if count > 1 else 1.0,
+                    harmony=harmony,
+                    place_representativeness=place,
                 )
                 sid = f"scheme_hsl_rule_{i:02d}"
 

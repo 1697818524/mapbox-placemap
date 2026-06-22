@@ -75,9 +75,11 @@
         :max="BATCH_MAX"
         :loading="pipelineLoading"
         :progress="pipelineProgressLine"
+        :ready="colorSchemeStore.schemeGenerationReady"
         @upload="onLocalFilesPicked"
         @remove-search="removeSelectedSearchImage"
         @remove-local="removeLocalFile"
+        @confirm="runVisionPipeline"
       />
     </div>
   </div>
@@ -120,6 +122,12 @@ const selectedSearchImages = computed(() =>
     .filter((_, index) => selectedFlags.value[index]),
 )
 
+function markSampleSetDirty() {
+  if (!colorSchemeStore.schemeGenerationReady && !colorSchemeStore.lastPipelineJobId) return
+  colorSchemeStore.setLastPipelineJobId(null)
+  colorSchemeStore.setSchemeGenerationReady(false)
+}
+
 function pipelineStageLabel(job: PipelineJob): string {
   const s = job.current_stage
   if (s) {
@@ -146,6 +154,7 @@ const searchImages = async (keyword: string) => {
     selectedFlags.value = []
     currentLocationSlug.value = ''
     localFiles.value = []
+    markSampleSetDirty()
     return
   }
 
@@ -154,6 +163,7 @@ const searchImages = async (keyword: string) => {
 
   isLoadingImages.value = true
   imageResults.value = []
+  markSampleSetDirty()
 
   try {
     const images = await imageApi.search(kw, IMAGE_CONFIG.SEARCH_POOL_COUNT)
@@ -222,6 +232,7 @@ function toggleSearchSelect(index: number) {
     next[index] = false
   }
   selectedFlags.value = next
+  markSampleSetDirty()
 }
 
 function selectAllSearch() {
@@ -237,10 +248,12 @@ function selectAllSearch() {
     used++
   }
   selectedFlags.value = next
+  markSampleSetDirty()
 }
 
 function clearSearchSelection() {
   selectedFlags.value = imageResults.value.map(() => false)
+  markSampleSetDirty()
 }
 
 function removeSelectedSearchImage(index: number) {
@@ -248,6 +261,7 @@ function removeSelectedSearchImage(index: number) {
   if (index >= 0 && index < next.length) {
     next[index] = false
     selectedFlags.value = next
+    markSampleSetDirty()
   }
 }
 
@@ -268,11 +282,13 @@ function onLocalFilesPicked(e: Event) {
     if (dup) continue
     localFiles.value.push(f)
     remaining--
+    markSampleSetDirty()
   }
 }
 
 function removeLocalFile(i: number) {
   localFiles.value = localFiles.value.filter((_, j) => j !== i)
+  markSampleSetDirty()
 }
 
 type PipelineBuildEvent = CustomEvent<{
@@ -376,8 +392,6 @@ const runVisionPipeline = async (): Promise<boolean> => {
       /* 方案文件缺失时不阻断成功提示 */
     }
     ElMessage.success(t('mapInfo.pipelineSuccess'))
-    localFiles.value = []
-    selectedFlags.value = imageResults.value.map(() => false)
     return true
   } catch (e) {
     colorSchemeStore.setLastPipelineJobId(null)
@@ -417,6 +431,7 @@ watch(
       selectedFlags.value = []
       currentLocationSlug.value = ''
       localFiles.value = []
+      markSampleSetDirty()
     }
   },
 )
@@ -425,16 +440,19 @@ watch(
 <style scoped>
 .map-info {
   height: 100%;
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  background-color: #fff;
-  overflow-y: auto;
+  background-color: #fbfcfe;
+  overflow: hidden;
 }
 
 .image-results {
   flex: 1;
+  min-height: 0;
   padding: 16px;
   overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .image-results-header {
@@ -451,7 +469,9 @@ watch(
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  margin-bottom: 14px;
+  margin-bottom: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #edf0f4;
   font-size: 12px;
   color: #606266;
 }
@@ -468,8 +488,8 @@ watch(
 
 .image-results-title {
   margin: 0;
-  font-size: 16px;
-  font-weight: 650;
+  font-size: 14px;
+  font-weight: 700;
   color: #1f2937;
 }
 
@@ -502,18 +522,16 @@ watch(
 .image-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+  gap: 10px;
 }
 
 .image-item {
   position: relative;
   cursor: pointer;
-  border-radius: 9px;
+  border-radius: 6px;
   overflow: hidden;
   background: #f6f8fb;
-  transition:
-    transform 0.2s,
-    box-shadow 0.2s;
+  transition: box-shadow 0.18s;
   outline: 1px solid #e6eaf1;
 }
 
@@ -523,8 +541,7 @@ watch(
 }
 
 .image-item:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 6px 16px rgba(23, 35, 61, 0.12);
+  box-shadow: 0 3px 10px rgba(23, 35, 61, 0.12);
 }
 
 .image-check {

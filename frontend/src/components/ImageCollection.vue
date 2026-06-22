@@ -3,7 +3,7 @@
     <div class="collection-head">
       <div>
         <h3>图片集</h3>
-        <p>{{ total }} / {{ max }} 张，用于自动构建样本集</p>
+        <p>{{ total }} / {{ max }} 张，用于构建样本候选色</p>
       </div>
       <div class="collection-actions">
         <input
@@ -15,11 +15,26 @@
           @change="onPicked"
         />
         <el-button size="small" @click="fileInputRef?.click()">上传图片</el-button>
+        <el-button
+          size="small"
+          type="primary"
+          :loading="loading"
+          :disabled="total === 0 || loading || ready"
+          @click="$emit('confirm')"
+        >
+          {{ ready ? '候选色已提取' : '确认提取候选颜色' }}
+        </el-button>
       </div>
     </div>
 
-    <div class="collection-status" :class="{ active: loading }">
-      {{ loading ? progress : '当地图片和上传图片会一起组成最终图片集' }}
+    <div class="collection-status" :class="{ active: loading, ready }">
+      {{
+        loading
+          ? progress
+          : ready
+            ? '候选色已提取，可以生成方案'
+            : '确认后会提取各语义候选颜色，未确认前不能生成方案'
+      }}
     </div>
 
     <div v-if="total === 0" class="collection-empty">
@@ -39,13 +54,13 @@
           loading="lazy"
         />
         <span class="source-pill">当地</span>
-        <button class="remove-btn" type="button" @click="$emit('remove-search', item.index)">×</button>
+        <button class="remove-btn" type="button" @click="$emit('remove-search', item.index)">x</button>
       </div>
 
       <div v-for="item in localPreviewItems" :key="item.key" class="collection-card">
         <img :src="item.url" :alt="item.file.name" loading="lazy" />
         <span class="source-pill source-pill--local">上传</span>
-        <button class="remove-btn" type="button" @click="$emit('remove-local', item.index)">×</button>
+        <button class="remove-btn" type="button" @click="$emit('remove-local', item.index)">x</button>
       </div>
     </div>
   </section>
@@ -63,12 +78,14 @@ const props = defineProps<{
   max: number
   loading: boolean
   progress: string
+  ready: boolean
 }>()
 
 const emit = defineEmits<{
   upload: [event: Event]
   'remove-search': [index: number]
   'remove-local': [index: number]
+  confirm: []
 }>()
 
 const fileInputRef = ref<HTMLInputElement | null>(null)
@@ -108,9 +125,9 @@ onBeforeUnmount(revokeUrls)
 .image-collection {
   margin-top: 14px;
   padding: 14px;
-  border: 1px solid #e6ebf2;
-  border-radius: 10px;
-  background: #f8fafc;
+  border: 1px solid #dfe5ed;
+  border-radius: 8px;
+  background: #fff;
 }
 
 .collection-head {
@@ -122,7 +139,7 @@ onBeforeUnmount(revokeUrls)
 
 .collection-head h3 {
   margin: 0;
-  font-size: 15px;
+  font-size: 14px;
   color: #1f2937;
 }
 
@@ -133,6 +150,11 @@ onBeforeUnmount(revokeUrls)
 }
 
 .collection-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
   flex-shrink: 0;
 }
 
@@ -152,6 +174,11 @@ onBeforeUnmount(revokeUrls)
 
 .collection-status.active {
   color: #4264fb;
+  font-weight: 600;
+}
+
+.collection-status.ready {
+  color: #16834a;
   font-weight: 600;
 }
 
@@ -176,7 +203,7 @@ onBeforeUnmount(revokeUrls)
 .collection-card {
   position: relative;
   overflow: hidden;
-  border-radius: 8px;
+  border-radius: 6px;
   aspect-ratio: 4 / 3;
   background: #eef2f7;
 }

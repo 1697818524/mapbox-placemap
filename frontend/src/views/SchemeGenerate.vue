@@ -5,7 +5,13 @@
     </div>
     <div class="main-content">
       <aside class="left-sidebar">
-        <ObjectiveScoresPanel class="scores-block" />
+        <ObjectiveScoresPanel
+          class="scores-block"
+          :generation-mode="semanticMode"
+          :population="population"
+          :generations="generations"
+          :available-semantics="availableSemantics"
+        />
       </aside>
       <div class="map-container">
         <MapDisplay />
@@ -79,7 +85,18 @@
       </div>
       <template #footer>
         <el-button :disabled="isGenerating" @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="isGenerating" @click="onGenerateSchemes">开始生成</el-button>
+        <el-tooltip :content="localGenerateBlockedReason" placement="top" :disabled="!localGenerateBlocked">
+          <span>
+            <el-button
+              type="primary"
+              :loading="isGenerating"
+              :disabled="localGenerateBlocked"
+              @click="onGenerateSchemes"
+            >
+              开始生成
+            </el-button>
+          </span>
+        </el-tooltip>
       </template>
     </el-dialog>
   </div>
@@ -126,8 +143,22 @@ const semanticOptionsWithState = computed(() => {
   const available = new Set(availableSemantics.value)
   return semanticOptions.map(option => ({
     ...option,
-    disabled: available.size > 0 && !available.has(option.value),
+    disabled: available.size === 0 || !available.has(option.value),
   }))
+})
+const missingLocalLayers = computed(() => {
+  if (semanticMode.value !== 'local') return []
+  if (availableSemantics.value.length === 0) return currentScheme.value.layers
+  const available = new Set(availableSemantics.value)
+  return currentScheme.value.layers.filter(layer => {
+    const sem = layerSemantics.value[layer.id] || layer.semantic || 'green'
+    return !available.has(sem)
+  })
+})
+const localGenerateBlocked = computed(() => missingLocalLayers.value.length > 0 || isGenerating.value)
+const localGenerateBlockedReason = computed(() => {
+  if (isGenerating.value || !missingLocalLayers.value.length) return ''
+  return `局部模式下这些样式缺少候选语义：${missingLocalLayers.value.map(layer => layerName(layer.id)).join('、')}。请改选可用语义。`
 })
 const canGenerate = computed(
   () =>
@@ -190,6 +221,10 @@ async function onGenerateSchemes() {
   }
   if (!lastPipelineJobId.value || !schemeGenerationReady.value) {
     ElMessage.warning(t('mapStyle.generateBlockedNeedPipeline'))
+    return
+  }
+  if (localGenerateBlocked.value) {
+    ElMessage.warning(localGenerateBlockedReason.value)
     return
   }
 

@@ -18,8 +18,7 @@ export default {
     backHome: 'Back to Home',
     scoresTitle: 'Objective scores',
     scoresNoScheme: 'No scheme selected. Build the sample set on Home or click Generate.',
-    scoresNoMetrics:
-      'No metrics on this scheme (common for rule-based output). Enable GA in the pipeline for harmony / place scores.',
+    scoresNoMetrics: 'No objective metrics on this scheme yet. Confirm image candidates and generate schemes again.',
     scoreHarmony: 'Color harmony (f1)',
     scorePlace: 'Place representativeness (f2)',
     scoreSemanticFit: 'Semantic fit',

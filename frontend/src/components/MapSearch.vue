@@ -114,17 +114,28 @@ defineExpose({
 
 <style scoped>
 .map-search {
-  padding: 16px;
+  padding: 16px 16px 14px;
   background-color: #fff;
+  border-bottom: 1px solid #e8ecf2;
 }
 
 .search-container {
   position: relative;
-  margin-bottom: 16px;
+  margin-bottom: 0;
 }
 
 .search-input {
   width: 100%;
+}
+
+.search-input :deep(.el-input__wrapper) {
+  min-height: 38px;
+  border-radius: 6px;
+  box-shadow: 0 0 0 1px #d8dee8 inset;
+}
+
+.search-input :deep(.el-input__wrapper.is-focus) {
+  box-shadow: 0 0 0 1px #4264fb inset;
 }
 
 .search-results {
@@ -170,21 +181,22 @@ defineExpose({
 }
 
 .location-info {
-  margin-top: 16px;
-  padding: 16px;
-  background-color: #f5f7fa;
-  border-radius: 4px;
+  margin-top: 12px;
+  padding: 12px;
+  background-color: #f8fafc;
+  border: 1px solid #e5eaf1;
+  border-radius: 6px;
 }
 
 .location-info h3 {
   margin: 0 0 12px 0;
-  font-size: 16px;
+  font-size: 13px;
   color: #303133;
 }
 
 .location-info p {
   margin: 8px 0;
-  font-size: 14px;
+  font-size: 12px;
   color: #606266;
 }
 

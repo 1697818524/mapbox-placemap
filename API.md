@@ -303,8 +303,8 @@ Pipeline 阶段：
         "semantic_fit": 0.9,
         "readability": 0.7,
         "diversity": 0.3,
-        "harmony": null,
-        "place_representativeness": null
+        "harmony": 0.81,
+        "place_representativeness": 0.64
       }
     }
   ]
@@ -416,6 +416,12 @@ Pipeline 阶段：
 - `green`
 - `landmark`
 
+生成前端流程说明：
+
+- 首页图片集需要先点击“确认提取候选颜色”，完成 pipeline 并拿到 `job_id` 后才允许调用生成方案。
+- `local` 模式下，前端会先读取 `/api/pipeline/jobs/{job_id}/palette-semantics`。缺少候选色的语义选项会置灰，仍有样式缺少可用语义时不会提交生成请求。
+- `global` 模式下，每个样式可使用所有候选语义颜色。
+
 响应：
 
 ```json
@@ -441,13 +447,21 @@ Pipeline 阶段：
         "semantic_fit": 0.928,
         "readability": 0.687,
         "diversity": 0.05,
-        "harmony": null,
-        "place_representativeness": null
+        "harmony": 0.81,
+        "place_representativeness": 0.64
       }
     }
   ]
 }
 ```
+
+`scores` 说明：
+
+- `semantic_fit`：候选色与样本集主色的贴合度。
+- `readability`：旧版可读性辅助指标，保留兼容。
+- `diversity`：方案间差异度辅助指标。
+- `harmony`：双目标之一，颜色和谐度。
+- `place_representativeness`：双目标之一，地方表征性 overall；视觉层次质量使用当前方案的 `background` 图层颜色作为固定底色。
 
 ## 维护提醒
 

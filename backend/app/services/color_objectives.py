@@ -154,23 +154,24 @@ def place_representativeness_score(
     palette: Dict[str, List[Tuple[str, float]]],
     csv_paths: Dict[str, str],
     background_semantic: str,
+    background_hex: Optional[str] = None,
     delta_t: float = 40.0,
     delta_l: float = 20.0,
     mu: float = 15.0,
 ) -> Dict[str, float]:
     """
-    地方表征性（my_work objective1）：visual_norm 与 semantic_consistency 的算术平均。
-    需指定 background_semantic（图-底中的「底」语义，如 green / roadnet）。
+    地方表征性（my_work objective1）：视觉层次质量 visual 与 semantic_consistency 的算术平均。
+    传入 background_hex 时，视觉层次质量固定使用地图 background 样式作为底色。
     """
-    if background_semantic not in palette:
+    if not background_hex and background_semantic not in palette:
         raise KeyError(f"background semantic not in palette: {background_semantic}")
 
     def rep_color(cs: List[Tuple[str, float]]) -> str:
         """每语义取 count 最大簇的代表色。"""
         return max(cs, key=lambda x: x[1])[0] if cs else "#808080"
 
-    cats = [c for c in palette if c != background_semantic and palette[c]]
-    bg = rep_color(palette[background_semantic])
+    cats = [c for c in palette if (background_hex or c != background_semantic) and palette[c]]
+    bg = background_hex or rep_color(palette[background_semantic])
     fig_sum = sum(_fig_ground_score(rep_color(palette[c]), bg, delta_t, delta_l) for c in cats)
     diff_sum = 0.0
     for i in range(len(cats)):

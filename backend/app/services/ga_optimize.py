@@ -20,6 +20,8 @@ from app.services.scheme_generate import (
     default_color_scheme,
 )
 
+DEFAULT_BACKGROUND_HEX = "#F3EFEC"
+
 
 def _chromosome_to_palette_dict(
     palettes: Dict[str, List[Tuple[int, int, int, int]]],
@@ -61,13 +63,18 @@ def _evaluate(
     palettes: Dict[str, List[Tuple[int, int, int, int]]],
     csv_paths: Dict[str, str],
     background_semantic: str,
+    background_hex: str,
 ) -> Tuple[float, float]:
     pal = _chromosome_to_palette_dict(palettes, semantics, genes)
     if len(pal) < 1:
         return 0.0, 0.0
-    bg = background_semantic if background_semantic in pal else sorted(pal.keys())[0]
     try:
-        place = color_objectives.place_representativeness_score(pal, csv_paths, bg)
+        place = color_objectives.place_representativeness_score(
+            pal,
+            csv_paths,
+            background_semantic,
+            background_hex=background_hex,
+        )
         f2 = float(place["overall"])
     except Exception:
         f2 = 0.0
@@ -75,6 +82,34 @@ def _evaluate(
     wts = [pal[s][0][1] for s in semantics if s in pal]
     f1 = color_objectives.harmony_score_from_hexes(hexes, wts)
     return f1, f2
+
+
+def _background_hex_from_scheme(scheme: ColorScheme) -> str:
+    for layer in scheme.layers:
+        if layer.id == "background" and layer.color:
+            return layer.color
+    return DEFAULT_BACKGROUND_HEX
+
+
+def _lock_background_layer(layers: List[ColorSchemeItem], background_hex: str) -> List[ColorSchemeItem]:
+    out: List[ColorSchemeItem] = []
+    has_background = False
+    for layer in layers:
+        if layer.id == "background":
+            has_background = True
+            out.append(
+                ColorSchemeItem(
+                    id=layer.id,
+                    color=background_hex,
+                    weight=layer.weight,
+                    semantic=layer.semantic,
+                )
+            )
+        else:
+            out.append(layer)
+    if not has_background:
+        out.insert(0, ColorSchemeItem(id="background", color=background_hex, weight=0.0, semantic="base"))
+    return out
 
 
 def _dominates(a: Tuple[float, float], b: Tuple[float, float]) -> bool:
@@ -182,9 +217,10 @@ def run_nsga2_schemes(
 
     pop = [random_individual() for _ in range(population)]
     base = _normalize_scheme_layers(base_scheme) if base_scheme else default_color_scheme()
+    background_hex = _background_hex_from_scheme(base)
 
     for _gen in range(generations):
-        objs = [_evaluate(ind, semantics, palettes, csv_paths, background_semantic) for ind in pop]
+        objs = [_evaluate(ind, semantics, palettes, csv_paths, background_semantic, background_hex) for ind in pop]
         fronts = _fast_non_dominated_sort(objs)
         rank_of = [10**9] * len(pop)
         for r, fr in enumerate(fronts):
@@ -216,7 +252,10 @@ def run_nsga2_schemes(
                 offspring.append(c2_t)
 
         combined = pop + offspring
-        comb_objs = [_evaluate(ind, semantics, palettes, csv_paths, background_semantic) for ind in combined]
+        comb_objs = [
+            _evaluate(ind, semantics, palettes, csv_paths, background_semantic, background_hex)
+            for ind in combined
+        ]
         fronts2 = _fast_non_dominated_sort(comb_objs)
         new_pop: List[Tuple[int, ...]] = []
         for fr in fronts2:
@@ -234,7 +273,7 @@ def run_nsga2_schemes(
                 break
         pop = new_pop[:population]
 
-    final_objs = [_evaluate(ind, semantics, palettes, csv_paths, background_semantic) for ind in pop]
+    final_objs = [_evaluate(ind, semantics, palettes, csv_paths, background_semantic, background_hex) for ind in pop]
     fronts3 = _fast_non_dominated_sort(final_objs)
     first = fronts3[0] if fronts3 else []
     cd = _crowding_distance(first, final_objs) if first else {}
@@ -244,7 +283,7 @@ def run_nsga2_schemes(
     for rank, idx in enumerate(first_sorted[:output_count]):
         genes = pop[idx]
         rgb_map = _chromosome_to_rgb_map(palettes, semantics, genes)
-        layers = _apply_palette_to_scheme(base, rgb_map)
+        layers = _lock_background_layer(_apply_palette_to_scheme(base, rgb_map), background_hex)
         f1, f2 = final_objs[idx]
         scores = SchemeScores(
             semantic_fit=f2,

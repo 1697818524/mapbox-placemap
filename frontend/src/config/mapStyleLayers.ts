@@ -49,9 +49,9 @@ export const waterLayers: LayerConfig[] = [
 ]
 
 export const waterLabelLayers: LayerConfig[] = [
-  { id: 'waterway-label', nameKey: 'waterwayLabel', paintProperty: 'icon-color' },
-  { id: 'water-line-label', nameKey: 'waterLineLabel', paintProperty: 'icon-color' },
-  { id: 'water-point-label', nameKey: 'waterPointLabel', paintProperty: 'icon-color' },
+  { id: 'waterway-label', nameKey: 'waterwayLabel', paintProperty: 'text-color' },
+  { id: 'water-line-label', nameKey: 'waterLineLabel', paintProperty: 'text-color' },
+  { id: 'water-point-label', nameKey: 'waterPointLabel', paintProperty: 'text-color' },
 ]
 
 export const roadLevel1Layers: LayerConfig[] = [
@@ -92,12 +92,12 @@ export const roadLevel3Layers: LayerConfig[] = [
 ]
 
 export const roadLabelLayers: LayerConfig[] = [
-  { id: 'road-label', nameKey: 'roadLabel', paintProperty: 'icon-color' },
+  { id: 'road-label', nameKey: 'roadLabel', paintProperty: 'text-color' },
 ]
 
 export const landmarkLabelLayers: LayerConfig[] = [
-  { id: 'place-label', nameKey: 'placeLabel', paintProperty: 'icon-color' },
-  { id: 'poi-label', nameKey: 'poiLabel', paintProperty: 'icon-color' },
+  { id: 'place-label', nameKey: 'placeLabel', paintProperty: 'text-color' },
+  { id: 'poi-label', nameKey: 'poiLabel', paintProperty: 'text-color' },
 ]
 
 export const roadLayers: LayerConfig[] = [

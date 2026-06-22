@@ -55,9 +55,9 @@ const handleLocaleChange = (value: string) => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 16px;
-  background: #d6dbe0;
-  gap: 16px;
+  padding: 0 20px;
+  background: #ffffff;
+  gap: 20px;
   position: relative;
 }
 
@@ -65,7 +65,7 @@ const handleLocaleChange = (value: string) => {
   flex: 1;
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 14px;
 }
 
 .nav-links {
@@ -75,9 +75,9 @@ const handleLocaleChange = (value: string) => {
 }
 
 .nav-link {
-  padding: 6px 12px;
-  font-size: 14px;
-  font-weight: 500;
+  padding: 7px 10px;
+  font-size: 13px;
+  font-weight: 600;
   color: #374151;
   text-decoration: none;
   border-radius: 6px;
@@ -94,7 +94,7 @@ const handleLocaleChange = (value: string) => {
 }
 
 .logo {
-  height: 80px;
+  height: 50px;
   width: auto;
   object-fit: contain;
 }
@@ -113,9 +113,9 @@ const handleLocaleChange = (value: string) => {
 
 .title {
   margin: 0;
-  font-size: 1.5em;
-  font-weight: 600;
-  color: #1f2937;
+  font-size: 20px;
+  font-weight: 700;
+  color: #172033;
 }
 
 .nav-right {
@@ -126,7 +126,7 @@ const handleLocaleChange = (value: string) => {
 }
 
 .lang-select {
-  min-width: 140px;
+  min-width: 88px;
 }
 
 .dropdown-trigger {
@@ -135,5 +135,8 @@ const handleLocaleChange = (value: string) => {
   gap: 6px;
   cursor: pointer;
   user-select: none;
+  color: #475467;
+  font-size: 13px;
+  font-weight: 500;
 }
 </style>

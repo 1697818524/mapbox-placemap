@@ -36,45 +36,71 @@ provide('mapInstance', mapInstanceRef)
 .container {
   display: flex;
   flex-direction: column;
-  height: 100%;
+  height: 100vh;
+  min-height: 0;
+  overflow: hidden;
+  background: #eef1f5;
 }
 .navbar {
-  height: 88px;
+  height: 64px;
   background-color: #fff;
   flex-shrink: 0;
-  border-bottom: 1px solid #e7eaf0;
+  border-bottom: 1px solid #dfe4eb;
+  position: relative;
+  z-index: 10;
 }
 .main-content {
-  display: flex;
-  flex-grow: 1;
-  background-color: #f4f6f8;
-  flex-direction: row;
+  display: grid;
+  grid-template-columns: 336px minmax(0, 1fr) 368px;
+  grid-template-rows: minmax(0, 1fr);
+  flex: 1 1 0;
+  height: calc(100vh - 64px);
+  background-color: #eef1f5;
   overflow: hidden;
   min-height: 0;
 }
 .left-sidebar {
-  width: 316px;
   background-color: #fff;
-  flex-shrink: 0;
-  border-right: 1px solid #e4e7ed;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+  border-right: 1px solid #dfe4eb;
 }
 .map-container {
-  flex-grow: 1;
-  background-color: #edf1f5;
-  flex-shrink: 0;
+  position: relative;
+  background-color: #e8edf2;
   min-width: 0;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
 }
 .right-sidebar {
-  width: 392px;
   background-color: #fff;
-  flex-shrink: 0;
   display: flex;
   flex-direction: column;
+  min-width: 0;
   min-height: 0;
-  border-left: 1px solid #e4e7ed;
+  height: 100%;
+  overflow: hidden;
+  border-left: 1px solid #dfe4eb;
 }
+.left-sidebar :deep(.map-info),
 .right-sidebar :deep(.map-style) {
-  flex: 1;
+  width: 100%;
+  height: 100%;
   min-height: 0;
+}
+
+@media (max-width: 1440px) {
+  .main-content {
+    grid-template-columns: 306px minmax(0, 1fr) 344px;
+  }
+}
+
+@media (max-width: 1120px) {
+  .main-content {
+    grid-template-columns: 288px minmax(0, 1fr) 320px;
+  }
 }
 </style>

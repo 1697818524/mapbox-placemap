@@ -3,9 +3,15 @@
     <div class="style-header">
       <h3>{{ t('mapStyle.title') }}</h3>
       <div class="header-actions">
-        <el-checkbox v-model="showLabelLayers" size="small">显示标签</el-checkbox>
         <el-button size="small" @click="resetAllColors">{{ t('mapStyle.resetAll') }}</el-button>
       </div>
+      <input
+        ref="styleImportInput"
+        class="style-import-input"
+        type="file"
+        accept="application/json,.json"
+        @change="handleImportStyle"
+      />
     </div>
 
     <el-scrollbar class="style-content">
@@ -106,11 +112,28 @@
 
       <template #footer>
         <el-button :disabled="isGenerating" @click="schemeDialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="isGenerating" @click="confirmGenerateSchemes">
-          {{ isGenerating ? t('mapStyle.generating') : '开始生成' }}
-        </el-button>
+        <el-tooltip :content="localGenerateBlockedReason" placement="top" :disabled="!localGenerateBlocked">
+          <span>
+            <el-button
+              type="primary"
+              :loading="isGenerating"
+              :disabled="localGenerateBlocked"
+              @click="confirmGenerateSchemes"
+            >
+              {{ isGenerating ? t('mapStyle.generating') : '开始生成' }}
+            </el-button>
+          </span>
+        </el-tooltip>
       </template>
     </el-dialog>
+
+    <div class="style-file-actions">
+      <span>样式文件</span>
+      <div>
+        <el-button size="small" @click="exportStyleConfig">导出样式</el-button>
+        <el-button size="small" @click="triggerImportStyle">导入样式</el-button>
+      </div>
+    </div>
 
     <div v-if="footerMode === 'generate'" class="generate-section">
       <el-tooltip :content="generateBlockedReason" placement="top" :disabled="canGenerate">
@@ -188,13 +211,34 @@ if (!mapInstanceRef) {
 }
 
 const colorSchemeStore = useColorSchemeStore()
-const { colorSchemes, selectedSchemeIndex, schemeGenerationReady } = storeToRefs(colorSchemeStore)
+const { colorSchemes, selectedSchemeIndex, schemeGenerationReady, lastPipelineJobId } = storeToRefs(colorSchemeStore)
 const getMap = (): MapboxMapInstance | null => mapInstanceRef.value
 
 const showLabelLayers = ref(false)
-const activeCategories = ref<string[]>(['base', 'water', 'roadLevel1', 'roadLevel2', 'roadLevel3', 'buildings', 'green'])
+const activeCategories = ref<string[]>([
+  'base',
+  'water',
+  'roadLevel1',
+  'roadLevel2',
+  'roadLevel3',
+  'buildings',
+  'green',
+])
 const layerColors = reactive<Record<string, string>>({})
 const originalColors = reactive<Record<string, string>>({})
+const styleImportInput = ref<HTMLInputElement | null>(null)
+
+interface ExportedStyleLayer {
+  id: string
+  color: string
+  semantic?: string
+}
+
+interface ExportedStyleConfig {
+  version: 1
+  exportedAt: string
+  layers: ExportedStyleLayer[]
+}
 
 const styleCategories = computed(() => {
   const categories: Array<{ name: string; title: string; layers: LayerConfig[] }> = [
@@ -270,13 +314,31 @@ const semanticOptionsWithState = computed(() => {
   const available = new Set(availableSemantics.value)
   return semanticOptions.map(option => ({
     ...option,
-    disabled: available.size > 0 && !available.has(option.value),
+    disabled: available.size === 0 || !available.has(option.value),
   }))
 })
-const canGenerate = computed(() => props.footerMode === 'generate' && colorSchemeStore.currentScheme.layers.length > 0)
+const missingLocalLayers = computed(() => {
+  if (schemeMode.value !== 'local') return []
+  if (availableSemantics.value.length === 0) return modelLayers.value
+  const available = new Set(availableSemantics.value)
+  return modelLayers.value.filter(layer => {
+    const sem = layerSemanticDraft[layer.id] || semanticForLayerId(layer.id) || 'green'
+    return !available.has(sem)
+  })
+})
+const localGenerateBlocked = computed(() => missingLocalLayers.value.length > 0 || isGenerating.value)
+const localGenerateBlockedReason = computed(() => {
+  if (isGenerating.value || !missingLocalLayers.value.length) return ''
+  return `局部模式下这些样式缺少候选语义：${missingLocalLayers.value.map(layer => getLayerName(layer.nameKey)).join('、')}。请改选可用语义。`
+})
+const sampleSetReady = computed(() => schemeGenerationReady.value && !!lastPipelineJobId.value)
+const canGenerate = computed(
+  () => props.footerMode === 'generate' && colorSchemeStore.currentScheme.layers.length > 0 && sampleSetReady.value,
+)
 const generateBlockedReason = computed(() => {
   if (props.footerMode !== 'generate') return ''
   if (colorSchemeStore.currentScheme.layers.length === 0) return t('mapStyle.noCurrentScheme')
+  if (!sampleSetReady.value) return '请先在图片集点击“确认提取候选颜色”'
   return ''
 })
 
@@ -286,12 +348,6 @@ function galleryPrev() {
 
 function galleryNext() {
   colorSchemeStore.setSelectedSchemeIndex(selectedSchemeIndex.value + 1)
-}
-
-function requestPipelineBuild(): Promise<boolean> {
-  return new Promise((resolve, reject) => {
-    window.dispatchEvent(new CustomEvent('placemap:build-samples', { detail: { resolve, reject } }))
-  })
 }
 
 function syncSemanticDraft() {
@@ -340,11 +396,15 @@ async function confirmGenerateSchemes() {
     ElMessage.warning(t('mapStyle.noCurrentScheme'))
     return
   }
+  if (localGenerateBlocked.value) {
+    ElMessage.warning(localGenerateBlockedReason.value)
+    return
+  }
   isGenerating.value = true
   try {
-    if (!schemeGenerationReady.value) {
-      const ready = await requestPipelineBuild()
-      if (!ready) return
+    if (!sampleSetReady.value) {
+      ElMessage.warning('请先在图片集点击“确认提取候选颜色”')
+      return
     }
 
     const response = await schemeApi.generateSchemes({
@@ -400,6 +460,28 @@ const mapStyleLayers = (): Array<{ id: string; type?: string }> => {
   }
 }
 
+const hideMapboxDecorations = () => {
+  const map = getMap()
+  if (!map || !map.isStyleLoaded()) return
+
+  mapStyleLayers().forEach(styleLayer => {
+    const lower = styleLayer.id.toLowerCase()
+    try {
+      if (styleLayer.type === 'symbol') {
+        map.setLayoutProperty(styleLayer.id, 'visibility', 'none')
+      }
+      if (
+        styleLayer.type === 'line' &&
+        (lower.includes('motorway') || lower.includes('trunk') || lower.includes('primary'))
+      ) {
+        map.setLayoutProperty(styleLayer.id, 'visibility', 'none')
+      }
+    } catch (error) {
+      void error
+    }
+  })
+}
+
 const resolveLayerTargets = (layer: LayerConfig): LayerTarget[] => {
   const explicit = getLayerTargets(layer)
   const dynamic: LayerTarget[] = []
@@ -409,7 +491,25 @@ const resolveLayerTargets = (layer: LayerConfig): LayerTarget[] => {
     const lower = id.toLowerCase()
     const type = styleLayer.type
     const isLabel = lower.includes('label') || lower.includes('symbol')
-    const isRoadLine = lower.includes('road') && type === 'line' && !isLabel
+    const isRoadLine =
+      type === 'line' &&
+      !isLabel &&
+      [
+        'road',
+        'street',
+        'motorway',
+        'trunk',
+        'primary',
+        'secondary',
+        'tertiary',
+        'minor',
+        'path',
+        'pedestrian',
+        'service',
+        'step',
+        'bridge',
+        'tunnel',
+      ].some(token => lower.includes(token))
 
     if (layer.id === 'background') {
       if (id === 'background') dynamic.push({ id, paintProperty: 'background-color' })
@@ -516,6 +616,7 @@ const applyColorsToMap = () => {
     if (!layer || !color) return
     resolveLayerTargets(layer).forEach(target => setTargetColor(target, color))
   })
+  hideMapboxDecorations()
 }
 
 const resetTargetColorToDefault = (target: LayerTarget) => {
@@ -555,6 +656,77 @@ const resetAllColors = () => {
     resolveLayerTargets(layer).forEach(resetTargetColorToDefault)
   })
   updateColorSchemeInStore()
+}
+
+const exportStyleConfig = () => {
+  const scheme = generateCurrentColorScheme()
+  const payload: ExportedStyleConfig = {
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    layers: scheme.layers.map(layer => ({
+      id: layer.id,
+      color: layer.color,
+      ...(layer.semantic ? { semantic: layer.semantic } : {}),
+    })),
+  }
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = `placemap-style-${new Date().toISOString().slice(0, 10)}.json`
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  URL.revokeObjectURL(url)
+}
+
+const triggerImportStyle = () => {
+  styleImportInput.value?.click()
+}
+
+const isStyleLayer = (value: unknown): value is ExportedStyleLayer => {
+  if (!value || typeof value !== 'object') return false
+  const row = value as Record<string, unknown>
+  return typeof row.id === 'string' && typeof row.color === 'string' && !!normalizeToHex(row.color)
+}
+
+const applyImportedStyle = (payload: unknown) => {
+  const raw = payload as Partial<ExportedStyleConfig>
+  if (!raw || !Array.isArray(raw.layers)) {
+    throw new Error('样式文件格式不正确')
+  }
+  const layerById = new Map(modelLayers.value.map(layer => [layer.id, layer]))
+  let applied = 0
+  raw.layers.forEach(item => {
+    if (!isStyleLayer(item)) return
+    const layer = layerById.get(item.id)
+    const color = normalizeToHex(item.color)
+    if (!layer || !color) return
+    layerColors[layer.id] = color
+    resolveLayerTargets(layer).forEach(target => setTargetColor(target, color))
+    if (item.semantic) {
+      layerSemanticDraft[layer.id] = item.semantic
+    }
+    applied += 1
+  })
+  if (!applied) {
+    throw new Error('未找到可导入的样式图层')
+  }
+  updateColorSchemeInStore()
+}
+
+const handleImportStyle = async (event: Event) => {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  input.value = ''
+  if (!file) return
+  try {
+    const text = await file.text()
+    applyImportedStyle(JSON.parse(text))
+    ElMessage.success('样式导入成功')
+  } catch (error) {
+    ElMessage.error(error instanceof Error ? error.message : '样式导入失败')
+  }
 }
 
 const hexToRgb = (hex: string): string => {
@@ -684,6 +856,7 @@ watch(
 
     const initMap = () => {
       setTimeout(() => {
+        hideMapboxDecorations()
         saveOriginalColors()
         updateColorSchemeInStore()
       }, 500)
@@ -720,6 +893,7 @@ onMounted(() => {
     const map = getMap()
     if (map?.isStyleLoaded()) {
       clearInterval(checkMap)
+      hideMapboxDecorations()
       saveOriginalColors()
       updateColorSchemeInStore()
     }
@@ -740,6 +914,8 @@ onMounted(() => {
   --studio-accent: #4264fb;
 
   height: 100%;
+  min-height: 0;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   background: var(--studio-bg);
@@ -751,14 +927,15 @@ onMounted(() => {
   justify-content: space-between;
   align-items: center;
   gap: 12px;
-  padding: 12px 14px;
+  min-height: 48px;
+  padding: 10px 14px;
   border-bottom: 1px solid var(--studio-border);
   background: var(--studio-bg);
 }
 
 .style-header h3 {
   margin: 0;
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 650;
   letter-spacing: 0;
   color: var(--studio-text);
@@ -771,9 +948,16 @@ onMounted(() => {
   flex-shrink: 0;
 }
 
+.style-import-input {
+  display: none;
+}
+
 .style-content {
-  flex: 1;
+  flex: 1 1 0;
+  min-height: 0;
   overflow-y: auto;
+  overscroll-behavior: contain;
+  background: #fff;
 }
 
 .scheme-dialog-head h3 {
@@ -899,7 +1083,7 @@ onMounted(() => {
 }
 
 .studio-collapse :deep(.el-collapse-item__header) {
-  height: 40px;
+  height: 38px;
   padding: 0 14px;
   font-weight: 650;
   font-size: 13px;
@@ -924,8 +1108,8 @@ onMounted(() => {
   justify-content: space-between;
   align-items: center;
   gap: 10px;
-  padding: 7px 12px;
-  min-height: 44px;
+  padding: 6px 12px;
+  min-height: 42px;
   border-bottom: 1px solid #eef2f6;
   background: var(--studio-bg);
 }
@@ -1003,9 +1187,38 @@ onMounted(() => {
 }
 
 .generate-section {
-  padding: 14px 16px;
+  padding: 12px 14px;
   border-top: 1px solid var(--studio-border);
   background: #fff;
+}
+
+.style-file-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 14px;
+  border-top: 1px solid var(--studio-border);
+  background: #fbfcfe;
+}
+
+.style-file-actions span {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--studio-text-muted);
+}
+
+.style-file-actions > div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.style-file-actions :deep(.el-button) {
+  --el-button-bg-color: #fff;
+  --el-button-border-color: var(--studio-border);
+  --el-button-text-color: var(--studio-text);
+  font-size: 11px;
 }
 
 .generate-btn-wrap {
