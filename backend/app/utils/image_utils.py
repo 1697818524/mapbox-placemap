@@ -1,11 +1,34 @@
 """
 图片处理工具函数
 """
-import httpx
+import urllib.request
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
 from typing import Optional
 from PIL import Image
 from io import BytesIO
 from app.config import settings
+from app.utils.ssl_context import get_ssl_context
+
+_executor = ThreadPoolExecutor(max_workers=4)
+_SSL_CTX = get_ssl_context()
+
+
+def _download_sync(url: str) -> Optional[bytes]:
+    """同步下载图片，返回原始字节。"""
+    try:
+        req = urllib.request.Request(url, headers={"User-Agent": settings.USER_AGENT})
+        kwargs = {"timeout": settings.REQUEST_TIMEOUT}
+        if url.startswith("https"):
+            kwargs["context"] = _SSL_CTX
+        with urllib.request.urlopen(req, **kwargs) as resp:
+            content_type = resp.headers.get("Content-Type", "")
+            if not content_type.startswith("image/"):
+                return None
+            return resp.read()
+    except Exception as e:
+        print(f"下载图片失败 {url}: {e}")
+        return None
 
 
 async def download_image(url: str) -> Optional[Image.Image]:
@@ -18,25 +41,14 @@ async def download_image(url: str) -> Optional[Image.Image]:
     Returns:
         PIL Image 对象，失败返回 None
     """
+    loop = asyncio.get_running_loop()
+    data = await loop.run_in_executor(_executor, _download_sync, url)
+    if data is None:
+        return None
     try:
-        async with httpx.AsyncClient(timeout=settings.REQUEST_TIMEOUT) as client:
-            response = await client.get(
-                url,
-                headers={"User-Agent": settings.USER_AGENT},
-                follow_redirects=True,
-            )
-            response.raise_for_status()
-
-            # 验证内容类型
-            content_type = response.headers.get("content-type", "")
-            if not content_type.startswith("image/"):
-                return None
-
-            # 打开图片
-            image = Image.open(BytesIO(response.content))
-            return image
+        return Image.open(BytesIO(data))
     except Exception as e:
-        print(f"下载图片失败 {url}: {e}")
+        print(f"打开图片失败 {url}: {e}")
         return None
 
 

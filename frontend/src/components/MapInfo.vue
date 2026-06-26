@@ -3,22 +3,11 @@
     <MapSearch ref="mapSearchRef" @search-enter="handleSearchEnter" @location-selected="handleLocationSelected" />
 
     <div class="image-results">
-      <div class="image-results-header">
-        <div>
-          <h3 class="image-results-title">当地图片搜索</h3>
-          <p class="image-results-subtitle">选择适合的当地图片加入图片集</p>
-        </div>
-      </div>
-
-      <div class="batch-toolbar">
-        <span class="batch-count">已选 {{ selectedSearchCount }} 张</span>
+      <div v-if="imageResults.length > 0" class="batch-toolbar">
+        <span class="batch-count">已选 {{ selectedSearchCount }} / {{ imageResults.length }} 张</span>
         <div class="batch-actions">
-          <el-button text size="small" type="primary" :disabled="imageResults.length === 0" @click="selectAllSearch">
-            选择当前结果
-          </el-button>
-          <el-button text size="small" :disabled="selectedSearchCount === 0" @click="clearSearchSelection">
-            清空选择
-          </el-button>
+          <button class="batch-link" :disabled="imageResults.length === 0" @click="selectAllSearch">全选</button>
+          <button class="batch-link" :disabled="selectedSearchCount === 0" @click="clearSearchSelection">清空</button>
         </div>
       </div>
 
@@ -67,21 +56,21 @@
       <div v-else-if="!isLoadingImages && imageResults.length === 0" class="image-empty">
         <span>{{ t('mapInfo.imageSearchPlaceholder') }}</span>
       </div>
-
-      <ImageCollection
-        :selected-images="selectedSearchImages"
-        :local-files="localFiles"
-        :total="totalBatchCount"
-        :max="BATCH_MAX"
-        :loading="pipelineLoading"
-        :progress="pipelineProgressLine"
-        :ready="colorSchemeStore.schemeGenerationReady"
-        @upload="onLocalFilesPicked"
-        @remove-search="removeSelectedSearchImage"
-        @remove-local="removeLocalFile"
-        @confirm="runVisionPipeline"
-      />
     </div>
+
+    <ImageCollection
+      :selected-images="selectedSearchImages"
+      :local-files="localFiles"
+      :total="totalBatchCount"
+      :max="BATCH_MAX"
+      :loading="pipelineLoading"
+      :progress="pipelineProgressLine"
+      :ready="colorSchemeStore.schemeGenerationReady"
+      @upload="onLocalFilesPicked"
+      @remove-search="removeSelectedSearchImage"
+      @remove-local="removeLocalFile"
+      @confirm="runVisionPipeline"
+    />
   </div>
 </template>
 
@@ -443,60 +432,54 @@ watch(
   min-height: 0;
   display: flex;
   flex-direction: column;
-  background-color: #fbfcfe;
+  background-color: #fafbfc;
   overflow: hidden;
 }
 
 .image-results {
   flex: 1;
   min-height: 0;
-  padding: 16px;
+  padding: 0 16px;
   overflow-y: auto;
   overscroll-behavior: contain;
 }
 
-.image-results-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 12px;
-}
-
 .batch-toolbar {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 12px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid #edf0f4;
+  padding: 8px 0 12px;
   font-size: 12px;
-  color: #606266;
+  color: #8b8f98;
 }
 
 .batch-count {
   font-weight: 600;
-  color: #303133;
+  color: #1a1d23;
 }
 
 .batch-actions {
   display: flex;
-  gap: 4px;
+  gap: 12px;
 }
 
-.image-results-title {
-  margin: 0;
-  font-size: 14px;
-  font-weight: 700;
-  color: #1f2937;
-}
-
-.image-results-subtitle {
-  margin: 4px 0 0;
-  color: #667085;
+.batch-link {
+  background: none;
+  border: none;
+  padding: 0;
   font-size: 12px;
+  color: #5b6cf0;
+  cursor: pointer;
+  border-radius: 0;
+}
+
+.batch-link:hover {
+  color: #4254d9;
+}
+
+.batch-link:disabled {
+  color: #c4c7cf;
+  cursor: default;
 }
 
 .image-loading {
@@ -522,43 +505,43 @@ watch(
 .image-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+  gap: 8px;
 }
 
 .image-item {
   position: relative;
   cursor: pointer;
-  border-radius: 6px;
+  border-radius: 8px;
   overflow: hidden;
-  background: #f6f8fb;
-  transition: box-shadow 0.18s;
-  outline: 1px solid #e6eaf1;
+  background: #f2f3f5;
+  transition: box-shadow .18s;
 }
 
 .image-item--selected {
-  outline-color: #4264fb;
-  box-shadow: 0 0 0 3px rgba(66, 100, 251, 0.16);
+  box-shadow: 0 0 0 2px #5b6cf0;
 }
 
 .image-item:hover {
-  box-shadow: 0 3px 10px rgba(23, 35, 61, 0.12);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.image-item--selected:hover {
+  box-shadow: 0 0 0 2px #5b6cf0, 0 2px 8px rgba(91, 108, 240, 0.15);
 }
 
 .image-check {
   position: absolute;
-  top: 6px;
-  left: 6px;
+  top: 5px;
+  left: 5px;
   z-index: 2;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 22px;
-  height: 22px;
+  width: 18px;
+  height: 18px;
   margin: 0;
-  background: rgba(255, 255, 255, 0.9);
-  border-radius: 4px;
+  border-radius: 5px;
   cursor: pointer;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
 }
 
 .image-check input {
@@ -568,26 +551,26 @@ watch(
 }
 
 .image-check-mark {
-  width: 14px;
-  height: 14px;
-  border: 1px solid #a8abb2;
-  border-radius: 3px;
-  background: #fff;
+  width: 18px;
+  height: 18px;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.85);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  transition: background .15s, box-shadow .15s;
 }
 
 .image-check-mark--checked {
-  position: relative;
-  border-color: #4264fb;
-  background: #4264fb;
+  background: #5b6cf0;
+  box-shadow: 0 1px 3px rgba(91, 108, 240, 0.3);
 }
 
 .image-check-mark--checked::after {
   content: '';
   position: absolute;
-  left: 4px;
-  top: 1px;
-  width: 4px;
-  height: 8px;
+  left: 5px;
+  top: 3px;
+  width: 5px;
+  height: 9px;
   border: solid #fff;
   border-width: 0 2px 2px 0;
   transform: rotate(45deg);
@@ -613,11 +596,6 @@ watch(
   height: 100%;
   object-fit: cover;
   object-position: center;
-  transition: transform 0.3s;
-}
-
-.image-item:hover .image-wrapper img {
-  transform: scale(1.05);
 }
 
 .image-overlay {
@@ -625,10 +603,10 @@ watch(
   bottom: 0;
   left: 0;
   right: 0;
-  background: linear-gradient(to top, rgba(0, 0, 0, 0.7), transparent);
-  padding: 12px 8px 8px;
+  padding: 6px 8px;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.45), transparent);
   opacity: 0;
-  transition: opacity 0.2s;
+  transition: opacity .18s;
 }
 
 .image-item:hover .image-overlay {
@@ -637,7 +615,7 @@ watch(
 
 .image-title {
   color: #fff;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 500;
   display: block;
   white-space: nowrap;
@@ -648,7 +626,7 @@ watch(
 @media (max-width: 768px) {
   .image-grid {
     grid-template-columns: repeat(2, 1fr);
-    gap: 10px;
+    gap: 8px;
   }
 }
 </style>

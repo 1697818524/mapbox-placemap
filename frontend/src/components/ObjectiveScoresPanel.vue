@@ -134,22 +134,22 @@ function formatScore(v: number): string {
 
 <style scoped>
 .scores-panel {
-  padding: 12px;
-  background: rgb(255 255 255 / 92%);
-  border: 1px solid rgb(226 232 240 / 90%);
-  border-radius: 8px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 0;
 }
 
 .title {
-  margin: 0 0 8px;
-  font-size: 13px;
+  margin: 0 0 12px;
+  font-size: 14px;
   font-weight: 700;
-  color: #172033;
+  color: #1a1d23;
 }
 
 .info-section {
-  padding: 10px 0;
-  border-top: 1px solid #edf2f7;
+  padding: 12px 0;
+  border-top: 1px solid #eceef2;
 }
 
 .title + .info-section {
@@ -159,32 +159,33 @@ function formatScore(v: number): string {
 
 .section-title {
   margin-bottom: 8px;
-  color: #475467;
-  font-size: 12px;
+  color: #6b6f78;
+  font-size: 11px;
   font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .objective-item {
   display: flex;
   flex-direction: column;
-  gap: 3px;
-  padding: 8px 10px;
-  border: 1px solid #e6ebf2;
-  border-radius: 6px;
-  background: #f8fafc;
+  gap: 2px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #f3f4f6;
 }
 
 .objective-item + .objective-item {
-  margin-top: 8px;
+  margin-top: 6px;
 }
 
 .objective-item strong {
-  color: #172033;
+  color: #1a1d23;
   font-size: 12px;
 }
 
 .objective-item span {
-  color: #667085;
+  color: #8b8f98;
   font-size: 11px;
   line-height: 1.45;
 }
@@ -192,7 +193,7 @@ function formatScore(v: number): string {
 .placeholder {
   margin: 0;
   font-size: 12px;
-  color: #909399;
+  color: #8b8f98;
   line-height: 1.5;
 }
 
@@ -200,20 +201,20 @@ function formatScore(v: number): string {
   margin: 0;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  gap: 7px 12px;
+  gap: 6px 12px;
   font-size: 12px;
 }
 
 .score-grid dt {
   margin: 0;
-  color: #667085;
+  color: #8b8f98;
 }
 
 .score-grid dd {
   margin: 0;
-  font-family: ui-monospace, monospace;
+  font-family: ui-monospace, 'Cascadia Code', 'Source Code Pro', monospace;
   font-weight: 700;
-  color: #111827;
+  color: #1a1d23;
   text-align: right;
 }
 
@@ -225,28 +226,28 @@ function formatScore(v: number): string {
 }
 
 .scheme-id {
-  margin-top: 10px;
-  padding-top: 8px;
-  border-top: 1px solid #edf2f7;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid #eceef2;
   font-size: 11px;
 }
 
 .scheme-id .label {
-  color: #909399;
+  color: #8b8f98;
   margin-right: 6px;
 }
 
 .scheme-id code {
   display: block;
-  margin-top: 5px;
+  margin-top: 4px;
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  word-break: break-all;
   font-size: 11px;
-  background: #f6f8fb;
-  padding: 4px 6px;
-  border-radius: 4px;
+  background: #f3f4f6;
+  padding: 4px 8px;
+  border-radius: 6px;
+  color: #6b6f78;
 }
 </style>

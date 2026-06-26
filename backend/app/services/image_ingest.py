@@ -5,15 +5,20 @@ from __future__ import annotations
 
 import hashlib
 import asyncio
+import urllib.request
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import List, Optional
 from uuid import uuid4
 
-import httpx
 from fastapi import UploadFile
 
 from app.config import settings
 from app.models.image import CollectedImage
+from app.utils.ssl_context import get_ssl_context
+
+_executor = ThreadPoolExecutor(max_workers=6)
+_SSL_CTX = get_ssl_context()
 
 
 class ImageIngestService:
@@ -81,40 +86,40 @@ class ImageIngestService:
         output_dir = self._location_dir(location)
         semaphore = asyncio.Semaphore(6)
 
-        async with httpx.AsyncClient(timeout=settings.REQUEST_TIMEOUT, follow_redirects=True) as client:
-            async def fetch_one(url: str) -> Optional[CollectedImage]:
-                async with semaphore:
-                    try:
-                        response = await client.get(
-                            url,
-                            headers={"User-Agent": settings.USER_AGENT},
-                        )
-                        response.raise_for_status()
-                        content_type = response.headers.get("content-type")
-                        if not self._is_image_content_type(content_type):
-                            return None
-
-                        raw = response.content
-                        if not raw:
-                            return None
-
-                        image_id = self._build_image_id(raw)
-                        ext = self._file_ext_from_content_type(content_type)
-                        filename = f"{image_id}{ext}"
-                        path = output_dir / filename
-                        path.write_bytes(raw)
-
-                        return CollectedImage(
-                            image_id=image_id,
-                            filename=filename,
-                            path=str(path),
-                            source="search",
-                            original_url=url,
-                        )
-                    except Exception:
+        def _fetch_sync(url: str) -> Optional[CollectedImage]:
+            try:
+                req = urllib.request.Request(url, headers={"User-Agent": settings.USER_AGENT})
+                kwargs = {"timeout": settings.REQUEST_TIMEOUT}
+                if url.startswith("https"):
+                    kwargs["context"] = _SSL_CTX
+                with urllib.request.urlopen(req, **kwargs) as resp:
+                    content_type = resp.headers.get("Content-Type")
+                    if not self._is_image_content_type(content_type):
                         return None
+                    raw = resp.read()
+                    if not raw:
+                        return None
+                    image_id = self._build_image_id(raw)
+                    ext = self._file_ext_from_content_type(content_type)
+                    filename = f"{image_id}{ext}"
+                    path = output_dir / filename
+                    path.write_bytes(raw)
+                    return CollectedImage(
+                        image_id=image_id,
+                        filename=filename,
+                        path=str(path),
+                        source="search",
+                        original_url=url,
+                    )
+            except Exception:
+                return None
 
-            items = await asyncio.gather(*(fetch_one(url) for url in urls))
+        async def fetch_one(url: str) -> Optional[CollectedImage]:
+            async with semaphore:
+                loop = asyncio.get_running_loop()
+                return await loop.run_in_executor(_executor, _fetch_sync, url)
+
+        items = await asyncio.gather(*(fetch_one(url) for url in urls))
 
         seen: set[str] = set()
         results: List[CollectedImage] = []

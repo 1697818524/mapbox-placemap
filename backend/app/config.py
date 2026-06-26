@@ -41,7 +41,7 @@ class Settings(BaseSettings):
 
     # 外部脚本配置（Day3）
     PIPELINE_PYTHON_EXE: str = sys.executable
-    SHADOW_SCRIPT_PATH: str = str(WORKSPACE_DIR / "code.py")
+    SHADOW_SCRIPT_PATH: str = str(PROJECT_DIR / "code.py")
     ONEFORMER_SCRIPT_PATH: str = str(WORKSPACE_DIR / "OneFormer" / "hf_cityscapes_one_image_semantic.py")
     ONEFORMER_MODEL_DIR: str = str(WORKSPACE_DIR / "models" / "oneformer_cityscapes_swin_large")
     ONEFORMER_LOCAL_FILES_ONLY: bool = True

@@ -1,10 +1,13 @@
 """
 图片搜索路由
 """
+import asyncio
+import urllib.request
+import urllib.error
+from concurrent.futures import ThreadPoolExecutor
 from typing import List
 from urllib.parse import urlparse
 
-import httpx
 from fastapi import APIRouter, File, HTTPException, Query, UploadFile
 from fastapi.responses import Response
 
@@ -16,8 +19,12 @@ from app.models.image import (
 )
 from app.services.image_ingest import ImageIngestService
 from app.services.image_search import ImageSearchService
+from app.utils.ssl_context import get_ssl_context
 
 router = APIRouter(prefix="/api/images", tags=["图片搜索"])
+
+_executor = ThreadPoolExecutor(max_workers=4)
+_SSL_CTX = get_ssl_context()
 
 # 单次上传 / URL 采集与 pipeline 批次上限对齐（见 PipelineJobCreateRequest）
 MAX_IMAGES_PER_BATCH = 20
@@ -72,17 +79,28 @@ async def proxy_remote_image(
         "Referer": f"{parsed.scheme}://{host}/",
     }
     try:
-        async with httpx.AsyncClient(timeout=25.0, follow_redirects=True) as client:
-            r = await client.get(url, headers=headers)
-            r.raise_for_status()
-    except httpx.HTTPError as e:
+        loop = asyncio.get_running_loop()
+
+        def _fetch():
+            req = urllib.request.Request(url, headers=headers)
+            kwargs = {"timeout": 25.0}
+            if url.startswith("https"):
+                kwargs["context"] = _SSL_CTX
+            with urllib.request.urlopen(req, **kwargs) as resp:
+                ct = resp.headers.get("Content-Type") or "image/jpeg"
+                body = resp.read()
+                return body, ct
+
+        body, content_type = await loop.run_in_executor(_executor, _fetch)
+    except urllib.error.HTTPError as e:
+        raise HTTPException(status_code=502, detail=f"拉取图片失败: {e!s}") from e
+    except urllib.error.URLError as e:
         raise HTTPException(status_code=502, detail=f"拉取图片失败: {e!s}") from e
 
-    body = r.content
     if len(body) > _MAX_PROXY_IMAGE_BYTES:
         raise HTTPException(status_code=413, detail="图片过大")
 
-    ct = (r.headers.get("content-type") or "image/jpeg").split(";")[0].strip()
+    ct = (content_type or "image/jpeg").split(";")[0].strip()
     if ct and not (ct.startswith("image/") or ct == "application/octet-stream"):
         raise HTTPException(status_code=502, detail="响应不是图片类型")
 

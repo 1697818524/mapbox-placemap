@@ -10,6 +10,7 @@ from uuid import uuid4
 
 import os
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from typing import Dict, List, Optional, Set, Tuple, Union
 
 import cv2
 from fastapi import APIRouter, BackgroundTasks, HTTPException, status
@@ -107,7 +108,7 @@ async def get_pipeline_job_schemes(job_id: str) -> PipelineSchemesResponse:
 
 
 @router.get("/jobs/{job_id}/palette-semantics", summary="读取任务调色板候选语义")
-async def get_pipeline_palette_semantics(job_id: str) -> dict[str, list[str] | str]:
+async def get_pipeline_palette_semantics(job_id: str) -> Dict[str, Union[List[str], str]]:
     job = job_repository.get_job(job_id)
     if not job:
         _raise_job_not_found(job_id)
@@ -129,11 +130,11 @@ def _palette_csv_count(job_id: str) -> int:
     return len(list(cluster_dir.glob("palette_*.csv")))
 
 
-def _palette_semantics(job_id: str) -> list[str]:
+def _palette_semantics(job_id: str) -> List[str]:
     cluster_dir = Path("data/jobs") / job_id / "cluster"
     if not cluster_dir.is_dir():
         return []
-    semantics: set[str] = set()
+    semantics: Set[str] = set()
     for csv_path in sorted(cluster_dir.glob("palette_*.csv")):
         try:
             with open(csv_path, newline="", encoding="utf-8") as f:
@@ -153,15 +154,15 @@ def _process_shadow_semantic_one(
     dirs: dict[str, str],
     enable_shadow: bool,
     enable_semantic: bool,
-) -> tuple[str, str, str | None, ArtifactItem | None, ArtifactItem | None]:
+) -> Tuple[str, str, Optional[str], Optional[ArtifactItem], Optional[ArtifactItem]]:
     """
     单张图：可选去阴影 → 可选语义分割。
     返回 (image_id, 后续超像素用的 RGB 底图路径, 语义 png 路径或 None, shadow 产物, semantic 产物)。
     """
     input_for_semantic = src_path
-    shadow_art: ArtifactItem | None = None
-    sem_art: ArtifactItem | None = None
-    sem_png_path: str | None = None
+    shadow_art: Optional[ArtifactItem] = None
+    sem_art: Optional[ArtifactItem] = None
+    sem_png_path: Optional[str] = None
 
     if enable_shadow:
         src_ext = Path(src_path).suffix.lower() or ".png"
@@ -191,7 +192,7 @@ def _process_shadow_semantic_one(
     return image_id, input_for_semantic, sem_png_path, shadow_art, sem_art
 
 
-def _resolve_image_path(location: str, image_id: str) -> str | None:
+def _resolve_image_path(location: str, image_id: str) -> Optional[str]:
     base = Path("data/ingest") / location
     if not base.exists():
         return None

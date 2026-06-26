@@ -39,13 +39,12 @@ provide('mapInstance', mapInstanceRef)
   height: 100vh;
   min-height: 0;
   overflow: hidden;
-  background: #eef1f5;
+  background: #fafbfc;
 }
 .navbar {
-  height: 64px;
-  background-color: #fff;
+  height: 56px;
+  background-color: #fafbfc;
   flex-shrink: 0;
-  border-bottom: 1px solid #dfe4eb;
   position: relative;
   z-index: 10;
 }
@@ -54,18 +53,17 @@ provide('mapInstance', mapInstanceRef)
   grid-template-columns: 336px minmax(0, 1fr) 368px;
   grid-template-rows: minmax(0, 1fr);
   flex: 1 1 0;
-  height: calc(100vh - 64px);
-  background-color: #eef1f5;
+  height: calc(100vh - 56px);
+  background-color: #fafbfc;
   overflow: hidden;
   min-height: 0;
 }
 .left-sidebar {
-  background-color: #fff;
+  background-color: #fafbfc;
   min-width: 0;
   min-height: 0;
   height: 100%;
   overflow: hidden;
-  border-right: 1px solid #dfe4eb;
 }
 .map-container {
   position: relative;
@@ -83,7 +81,7 @@ provide('mapInstance', mapInstanceRef)
   min-height: 0;
   height: 100%;
   overflow: hidden;
-  border-left: 1px solid #dfe4eb;
+  border-left: 1px solid #eceef2;
 }
 .left-sidebar :deep(.map-info),
 .right-sidebar :deep(.map-style) {

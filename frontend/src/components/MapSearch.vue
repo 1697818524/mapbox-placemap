@@ -26,15 +26,10 @@
         </div>
       </div>
     </div>
-    <div v-if="selectedLocation" class="location-info">
-      <h3>{{ t('mapInfo.selectedLocation') }}</h3>
-      <p>
-        <strong>{{ t('mapInfo.name') }}:</strong> {{ selectedLocation.place_name }}
-      </p>
-      <p>
-        <strong>{{ t('mapInfo.coordinates') }}:</strong>
-        {{ selectedLocation.center[0].toFixed(4) }}, {{ selectedLocation.center[1].toFixed(4) }}
-      </p>
+    <div v-if="selectedLocation" class="location-line">
+      <span class="loc-dot"></span>
+      <span class="loc-name">{{ selectedLocation.place_name }}</span>
+      <span class="loc-coord">{{ selectedLocation.center[0].toFixed(2) }}, {{ selectedLocation.center[1].toFixed(2) }}</span>
     </div>
   </div>
 </template>
@@ -114,9 +109,8 @@ defineExpose({
 
 <style scoped>
 .map-search {
-  padding: 16px 16px 14px;
+  padding: 14px 16px 12px;
   background-color: #fff;
-  border-bottom: 1px solid #e8ecf2;
 }
 
 .search-container {
@@ -129,13 +123,20 @@ defineExpose({
 }
 
 .search-input :deep(.el-input__wrapper) {
-  min-height: 38px;
-  border-radius: 6px;
-  box-shadow: 0 0 0 1px #d8dee8 inset;
+  min-height: 36px;
+  border-radius: 8px;
+  box-shadow: 0 0 0 1px #e1e4e8 inset;
+  background: #f6f8fa;
+  transition: box-shadow .2s, background .2s;
+}
+
+.search-input :deep(.el-input__wrapper:hover) {
+  background: #fff;
 }
 
 .search-input :deep(.el-input__wrapper.is-focus) {
-  box-shadow: 0 0 0 1px #4264fb inset;
+  box-shadow: 0 0 0 1px #5b6cf0 inset;
+  background: #fff;
 }
 
 .search-results {
@@ -144,63 +145,70 @@ defineExpose({
   left: 0;
   right: 0;
   background: #fff;
-  border: 1px solid #e4e7ed;
-  border-radius: 4px;
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+  border: 1px solid #e8eaed;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
   z-index: 1000;
-  max-height: 300px;
+  max-height: 280px;
   overflow-y: auto;
-  margin-top: 4px;
+  margin-top: 6px;
 }
 
 .search-result-item {
-  padding: 12px;
+  padding: 10px 14px;
   cursor: pointer;
-  border-bottom: 1px solid #f0f0f0;
-  transition: background-color 0.2s;
+  transition: background-color .15s;
 }
 
 .search-result-item:hover {
-  background-color: #f5f7fa;
+  background-color: #f6f8fa;
 }
 
-.search-result-item:last-child {
-  border-bottom: none;
+.search-result-item + .search-result-item {
+  border-top: 1px solid #f3f4f6;
 }
 
 .result-name {
   font-weight: 600;
-  color: #303133;
-  margin-bottom: 4px;
-  font-size: 14px;
+  color: #1a1d23;
+  font-size: 13px;
 }
 
 .result-address {
+  margin-top: 2px;
   font-size: 12px;
-  color: #909399;
+  color: #8b8f98;
 }
 
-.location-info {
-  margin-top: 12px;
-  padding: 12px;
-  background-color: #f8fafc;
-  border: 1px solid #e5eaf1;
-  border-radius: 6px;
-}
-
-.location-info h3 {
-  margin: 0 0 12px 0;
-  font-size: 13px;
-  color: #303133;
-}
-
-.location-info p {
-  margin: 8px 0;
+.location-line {
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
   font-size: 12px;
-  color: #606266;
+  color: #6b6f78;
+  white-space: nowrap;
+  overflow: hidden;
 }
 
-.location-info strong {
-  color: #303133;
+.loc-dot {
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #5b6cf0;
+}
+
+.loc-name {
+  font-weight: 600;
+  color: #1a1d23;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.loc-coord {
+  flex-shrink: 0;
+  color: #8b8f98;
 }
 </style>

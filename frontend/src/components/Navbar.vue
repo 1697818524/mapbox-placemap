@@ -56,9 +56,10 @@ const handleLocaleChange = (value: string) => {
   align-items: center;
   justify-content: space-between;
   padding: 0 20px;
-  background: #ffffff;
+  background: #fafbfc;
   gap: 20px;
   position: relative;
+  border-bottom: 1px solid #eceef2;
 }
 
 .nav-left {
@@ -75,26 +76,27 @@ const handleLocaleChange = (value: string) => {
 }
 
 .nav-link {
-  padding: 7px 10px;
+  padding: 6px 12px;
   font-size: 13px;
   font-weight: 600;
-  color: #374151;
+  color: #6b6f78;
   text-decoration: none;
-  border-radius: 6px;
+  border-radius: 8px;
+  transition: color .15s, background .15s;
 }
 
 .nav-link:hover {
-  color: #1f2937;
-  background: rgba(255, 255, 255, 0.6);
+  color: #1a1d23;
+  background: #eceef2;
 }
 
 .nav-link.router-link-active {
-  color: #4264fb;
-  background: rgba(66, 100, 251, 0.1);
+  color: #5b6cf0;
+  background: rgba(91, 108, 240, 0.08);
 }
 
 .logo {
-  height: 50px;
+  height: 48px;
   width: auto;
   object-fit: contain;
 }
@@ -113,9 +115,25 @@ const handleLocaleChange = (value: string) => {
 
 .title {
   margin: 0;
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 700;
-  color: #172033;
+  color: #1a1d23;
+}
+
+.dropdown-trigger {
+  font-size: 13px;
+  color: #6b6f78;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  transition: background .15s;
+}
+
+.dropdown-trigger:hover {
+  background: #eceef2;
 }
 
 .nav-right {

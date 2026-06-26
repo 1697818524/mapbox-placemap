@@ -37,7 +37,7 @@
                   @change="(color: string | null) => updateLayerColor(layer, color)"
                 />
                 <el-button size="small" text class="studio-reset-btn" @click="resetLayerColor(layer)">
-                  ↺
+                  重置
                 </el-button>
               </div>
             </div>
@@ -907,11 +907,11 @@ onMounted(() => {
 <style scoped>
 .map-style {
   --studio-bg: #ffffff;
-  --studio-bg-soft: #f6f8fb;
-  --studio-border: #e5eaf1;
-  --studio-text: #1f2937;
-  --studio-text-muted: #667085;
-  --studio-accent: #4264fb;
+  --studio-bg-soft: #f4f5f7;
+  --studio-border: #eceef2;
+  --studio-text: #1a1d23;
+  --studio-text-muted: #8b8f98;
+  --studio-accent: #5b6cf0;
 
   height: 100%;
   min-height: 0;
@@ -927,8 +927,8 @@ onMounted(() => {
   justify-content: space-between;
   align-items: center;
   gap: 12px;
-  min-height: 48px;
-  padding: 10px 14px;
+  min-height: 44px;
+  padding: 10px 16px;
   border-bottom: 1px solid var(--studio-border);
   background: var(--studio-bg);
 }
@@ -936,7 +936,7 @@ onMounted(() => {
 .style-header h3 {
   margin: 0;
   font-size: 14px;
-  font-weight: 650;
+  font-weight: 700;
   letter-spacing: 0;
   color: var(--studio-text);
 }
@@ -962,21 +962,21 @@ onMounted(() => {
 
 .scheme-dialog-head h3 {
   margin: 0;
-  color: #111827;
-  font-size: 18px;
+  color: #1a1d23;
+  font-size: 17px;
   font-weight: 700;
 }
 
 .scheme-dialog-head p {
-  margin: 6px 0 0;
-  color: #667085;
+  margin: 4px 0 0;
+  color: #8b8f98;
   font-size: 13px;
 }
 
 .scheme-form {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 14px;
 }
 
 .mode-row {
@@ -986,31 +986,36 @@ onMounted(() => {
 }
 
 .mode-card {
-  padding: 14px;
-  border: 1px solid #dbe3ee;
+  padding: 12px 14px;
+  border: 1px solid #e2e5ea;
   border-radius: 10px;
-  background: #f8fafc;
+  background: #fff;
   text-align: left;
   cursor: pointer;
+  transition: border-color .15s, box-shadow .15s;
+}
+
+.mode-card:hover {
+  border-color: #c5c9d2;
 }
 
 .mode-card strong {
   display: block;
-  margin-bottom: 6px;
-  color: #1f2937;
-  font-size: 14px;
+  margin-bottom: 4px;
+  color: #1a1d23;
+  font-size: 13px;
 }
 
 .mode-card span {
-  color: #667085;
+  color: #8b8f98;
   font-size: 12px;
   line-height: 1.45;
 }
 
 .mode-card.active {
-  border-color: #4264fb;
-  background: #eef3ff;
-  box-shadow: 0 0 0 3px rgba(66, 100, 251, 0.12);
+  border-color: #5b6cf0;
+  background: #f5f7ff;
+  box-shadow: 0 0 0 2px rgba(91, 108, 240, 0.1);
 }
 
 .number-grid {
@@ -1022,46 +1027,46 @@ onMounted(() => {
 .number-grid label {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  color: #344054;
+  gap: 6px;
+  color: #1a1d23;
   font-size: 13px;
   font-weight: 600;
 }
 
 .semantic-editor {
-  border: 1px solid #e5eaf1;
+  border: 1px solid #eceef2;
   border-radius: 10px;
   overflow: hidden;
 }
 
 .semantic-editor-head {
-  padding: 12px 14px;
-  background: #f8fafc;
-  border-bottom: 1px solid #e5eaf1;
+  padding: 10px 14px;
+  background: #fafbfc;
+  border-bottom: 1px solid #eceef2;
 }
 
 .semantic-editor-head strong {
   display: block;
-  color: #1f2937;
-  font-size: 14px;
+  color: #1a1d23;
+  font-size: 13px;
 }
 
 .semantic-editor-head span {
   display: block;
-  margin-top: 4px;
-  color: #667085;
+  margin-top: 3px;
+  color: #8b8f98;
   font-size: 12px;
 }
 
 .semantic-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 150px;
+  grid-template-columns: minmax(0, 1fr) 140px;
   align-items: center;
   gap: 12px;
-  padding: 10px 14px;
-  border-bottom: 1px solid #eef2f6;
+  padding: 9px 14px;
+  border-bottom: 1px solid #f3f4f6;
   font-size: 13px;
-  color: #344054;
+  color: #1a1d23;
 }
 
 .semantic-row:last-child {
@@ -1070,11 +1075,11 @@ onMounted(() => {
 
 .semantic-hint {
   margin: 0;
-  padding: 10px 14px;
-  color: #667085;
+  padding: 8px 14px;
+  color: #8b8f98;
   font-size: 12px;
   line-height: 1.5;
-  background: #fbfcfe;
+  background: #fafbfc;
 }
 
 .studio-collapse.category-section {
@@ -1083,9 +1088,9 @@ onMounted(() => {
 }
 
 .studio-collapse :deep(.el-collapse-item__header) {
-  height: 38px;
-  padding: 0 14px;
-  font-weight: 650;
+  height: 36px;
+  padding: 0 16px;
+  font-weight: 700;
   font-size: 13px;
   color: var(--studio-text);
   background: var(--studio-bg);
@@ -1096,7 +1101,7 @@ onMounted(() => {
 .studio-collapse :deep(.el-collapse-item__content) {
   padding: 0;
   border-bottom: none;
-  background: var(--studio-bg);
+  background: #fafbfc;
 }
 
 .layer-list {
@@ -1108,19 +1113,19 @@ onMounted(() => {
   justify-content: space-between;
   align-items: center;
   gap: 10px;
-  padding: 6px 12px;
-  min-height: 42px;
-  border-bottom: 1px solid #eef2f6;
-  background: var(--studio-bg);
+  padding: 6px 16px;
+  min-height: 40px;
+  border-bottom: 1px solid #f3f4f6;
+  background: transparent;
 }
 
 .studio-layer-row:hover {
-  background: var(--studio-bg-soft);
+  background: #f4f5f7;
 }
 
 .studio-layer-main {
   display: grid;
-  grid-template-columns: 32px minmax(0, 1fr) auto;
+  grid-template-columns: 28px minmax(0, 1fr) auto;
   align-items: center;
   gap: 8px;
   flex: 1;
@@ -1128,11 +1133,10 @@ onMounted(() => {
 }
 
 .studio-color-chip {
-  width: 30px;
-  height: 20px;
-  border-radius: 5px;
-  border: 1px solid rgba(31, 41, 55, 0.16);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35);
+  width: 26px;
+  height: 18px;
+  border-radius: 4px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
 }
 
 .studio-layer-name {
@@ -1147,7 +1151,7 @@ onMounted(() => {
 
 .studio-hex {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  color: #475467;
+  color: #6b6f78;
   font-weight: 600;
   font-size: 11px;
   white-space: nowrap;
@@ -1161,17 +1165,17 @@ onMounted(() => {
 }
 
 .studio-reset-btn {
-  width: 28px !important;
+  padding: 0 8px !important;
   height: 28px !important;
-  padding: 0 !important;
   border-radius: 6px !important;
   color: var(--studio-text-muted) !important;
-  font-size: 15px !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
 }
 
 .studio-reset-btn:hover {
   color: var(--studio-text) !important;
-  background: #edf1f7 !important;
+  background: #eceef2 !important;
 }
 
 :deep(.el-color-picker) {
@@ -1182,14 +1186,14 @@ onMounted(() => {
   width: 28px;
   height: 28px;
   border-radius: 6px;
-  border: 1px solid #d0d7e2;
+  border: 1px solid #dde0e5;
   box-shadow: none;
 }
 
 .generate-section {
-  padding: 12px 14px;
+  padding: 12px 16px;
   border-top: 1px solid var(--studio-border);
-  background: #fff;
+  background: #fafbfc;
 }
 
 .style-file-actions {
@@ -1197,9 +1201,9 @@ onMounted(() => {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  padding: 9px 14px;
+  padding: 9px 16px;
   border-top: 1px solid var(--studio-border);
-  background: #fbfcfe;
+  background: #fafbfc;
 }
 
 .style-file-actions span {
@@ -1216,7 +1220,7 @@ onMounted(() => {
 
 .style-file-actions :deep(.el-button) {
   --el-button-bg-color: #fff;
-  --el-button-border-color: var(--studio-border);
+  --el-button-border-color: #dde0e5;
   --el-button-text-color: var(--studio-text);
   font-size: 11px;
 }
@@ -1229,12 +1233,13 @@ onMounted(() => {
 .generate-button {
   width: 100%;
   height: 36px;
-  font-size: 12px;
-  font-weight: 600;
+  font-size: 13px;
+  font-weight: 700;
+  border-radius: 8px;
   --el-button-bg-color: var(--studio-accent);
   --el-button-border-color: var(--studio-accent);
-  --el-button-hover-bg-color: #5b7cfe;
-  --el-button-hover-border-color: #5b7cfe;
+  --el-button-hover-bg-color: #4254d9;
+  --el-button-hover-border-color: #4254d9;
 }
 
 .generate-button .el-icon {
@@ -1271,13 +1276,21 @@ onMounted(() => {
 
 .style-header :deep(.el-button) {
   --el-button-bg-color: transparent;
-  --el-button-border-color: var(--studio-border);
+  --el-button-border-color: #dde0e5;
   --el-button-text-color: var(--studio-text-muted);
   font-size: 11px;
 }
 
 .style-header :deep(.el-button:hover) {
   --el-button-text-color: var(--studio-text);
-  --el-button-border-color: #cbd5e1;
+  --el-button-border-color: #c5c9d2;
+}
+
+.gallery-footer .gallery-hint {
+  margin: 0;
+  font-size: 12px;
+  color: var(--studio-text-muted);
+  text-align: center;
+  line-height: 1.45;
 }
 </style>

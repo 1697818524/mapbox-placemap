@@ -1,13 +1,12 @@
 """Unicode-safe OpenCV image IO helpers for Windows paths."""
-from __future__ import annotations
-
 from pathlib import Path
+from typing import Optional
 
 import cv2
 import numpy as np
 
 
-def imread_color(path: str) -> np.ndarray | None:
+def imread_color(path: str) -> Optional[np.ndarray]:
     raw = np.fromfile(path, dtype=np.uint8)
     if raw.size == 0:
         return None
