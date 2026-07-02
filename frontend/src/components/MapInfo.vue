@@ -4,10 +4,16 @@
 
     <div class="image-results">
       <div v-if="imageResults.length > 0" class="batch-toolbar">
-        <span class="batch-count">已选 {{ selectedSearchCount }} / {{ imageResults.length }} 张</span>
+        <span class="batch-count">
+          {{ t('mapInfo.selectedImageCount', { selected: selectedSearchCount, total: imageResults.length }) }}
+        </span>
         <div class="batch-actions">
-          <button class="batch-link" :disabled="imageResults.length === 0" @click="selectAllSearch">全选</button>
-          <button class="batch-link" :disabled="selectedSearchCount === 0" @click="clearSearchSelection">清空</button>
+          <button class="batch-link" :disabled="imageResults.length === 0" @click="selectAllSearch">
+            {{ t('mapInfo.selectAllSearch') }}
+          </button>
+          <button class="batch-link" :disabled="selectedSearchCount === 0" @click="clearSearchSelection">
+            {{ t('mapInfo.clearSearchSelection') }}
+          </button>
         </div>
       </div>
 
@@ -159,7 +165,7 @@ const searchImages = async (keyword: string) => {
     imageResults.value = images
     selectedFlags.value = images.map(() => false)
   } catch (error) {
-    console.error('搜索图片失败:', error)
+    console.error('Failed to search images:', error)
     ElMessage.error(t('mapInfo.imageSearchFailed'))
   } finally {
     isLoadingImages.value = false
@@ -167,7 +173,7 @@ const searchImages = async (keyword: string) => {
 }
 
 const handleSearchEnter = async () => {
-  // MapSearch 通过 defineExpose 暴露的 searchQuery 是 Ref<string>，必须 unref 后再传给接口
+  // MapSearch exposes a Ref via defineExpose, so unwrap it before calling the API.
   const q = unref(mapSearchRef.value?.searchQuery)
   const keyword = typeof q === 'string' ? q : ''
   if (keyword.trim()) {
@@ -185,7 +191,7 @@ const handleLocationSelected = async (location: GeocodeFeature) => {
 const handleImageError = (event: Event) => {
   const img = event.target as HTMLImageElement
   img.src =
-    'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="150"%3E%3Crect fill="%23ddd" width="200" height="150"/%3E%3Ctext fill="%23999" font-family="sans-serif" font-size="14" x="50%25" y="50%25" text-anchor="middle" dy=".3em"%3E图片加载失败%3C/text%3E%3C/svg%3E'
+    'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="150"%3E%3Crect fill="%23ddd" width="200" height="150"/%3E%3Ctext fill="%23999" font-family="sans-serif" font-size="14" x="50%25" y="50%25" text-anchor="middle" dy=".3em"%3EImage unavailable%3C/text%3E%3C/svg%3E'
 }
 
 const openImageViewer = (index: number) => {

@@ -19,8 +19,8 @@
         </span>
         <template #dropdown>
           <el-dropdown-menu>
-            <el-dropdown-item command="zh-CN">中文</el-dropdown-item>
-            <el-dropdown-item command="en-US">English</el-dropdown-item>
+            <el-dropdown-item command="zh-CN">{{ t('common.chinese') }}</el-dropdown-item>
+            <el-dropdown-item command="en-US">{{ t('common.english') }}</el-dropdown-item>
           </el-dropdown-menu>
         </template>
       </el-dropdown>
@@ -29,16 +29,19 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores'
 import { ArrowDown } from '@element-plus/icons-vue'
 import logoImg from '@/assets/logo.png'
+import { storeToRefs } from 'pinia'
 
-const { locale, t } = useI18n()
+const { t } = useI18n()
 const appStore = useAppStore()
-const currentLocale = ref<string>(locale.value)
-const currentLabel = computed(() => (currentLocale.value === 'zh-CN' ? '中文' : 'English'))
+const { locale: currentLocale } = storeToRefs(appStore)
+const currentLabel = computed(() =>
+  currentLocale.value === 'zh-CN' ? t('common.chinese') : t('common.english'),
+)
 
 const handleLocaleChange = (value: string) => {
   if (value === 'zh-CN' || value === 'en-US') {

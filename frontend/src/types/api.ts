@@ -27,6 +27,12 @@ export interface GeocodeFeature {
   text: string
   place_name: string
   center: [number, number] // [lng, lat]
+  name?: string
+  address?: string | null
+  provider?: 'amap' | 'nominatim'
+  raw_center?: [number, number]
+  coordinate_system?: 'WGS84' | 'GCJ02'
+  confidence?: number | null
   geometry: {
     type: string
     coordinates: [number, number]

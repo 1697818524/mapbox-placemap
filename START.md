@@ -5,7 +5,7 @@
 常用启动命令：
 
 ```powershell
-cd D:\任务\JSJ\mapbox-placemap
+cd E:\任务\mapbox-placemap
 npm run dev
 ```
 
@@ -16,4 +16,6 @@ npm run dev
 - 后端 OpenAPI：`http://127.0.0.1:8000/docs`
 
 接口说明见 `API.md`。以后接口字段、路径、请求体或响应结构有变化时，同步修改 `API.md`。
+
+地点搜索需要高德 Web 服务 Key；本地配置方式见 `README.md` 的“关键配置”章节。不要把真实 Key 提交到仓库。
 

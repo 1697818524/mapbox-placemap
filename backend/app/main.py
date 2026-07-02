@@ -22,6 +22,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 from app.routers import images
 from app.routers import pipeline
+from app.routers import places
 from app.routers import schemes
 
 # 创建 FastAPI 应用实例
@@ -43,6 +44,7 @@ app.add_middleware(
 # 注册路由
 app.include_router(images.router)
 app.include_router(pipeline.router)
+app.include_router(places.router)
 app.include_router(schemes.router)
 
 

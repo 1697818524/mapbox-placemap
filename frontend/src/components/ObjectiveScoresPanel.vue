@@ -2,32 +2,32 @@
   <div class="scores-panel">
     <h3 class="title">{{ t('generatePage.scoresTitle') }}</h3>
     <section class="info-section">
-      <div class="section-title">优化目标</div>
+      <div class="section-title">{{ t('objectivePanel.optimizationGoals') }}</div>
       <div class="objective-item">
-        <strong>f1 颜色和谐度</strong>
-        <span>整体色相关系与配色协调性</span>
+        <strong>{{ t('objectivePanel.harmonyTitle') }}</strong>
+        <span>{{ t('objectivePanel.harmonyDescription') }}</span>
       </div>
       <div class="objective-item">
-        <strong>f2 地方表征性</strong>
-        <span>视觉层次质量 + 语义一致性</span>
+        <strong>{{ t('objectivePanel.placeTitle') }}</strong>
+        <span>{{ t('objectivePanel.placeDescription') }}</span>
       </div>
     </section>
     <section class="info-section">
-      <div class="section-title">生成参数</div>
+      <div class="section-title">{{ t('objectivePanel.generationParams') }}</div>
       <dl class="score-grid">
-        <dt>当前方案</dt>
+        <dt>{{ t('objectivePanel.currentScheme') }}</dt>
         <dd>{{ schemePosition }}</dd>
-        <dt>候选模式</dt>
+        <dt>{{ t('objectivePanel.candidateMode') }}</dt>
         <dd>{{ modeLabel }}</dd>
-        <dt>种群数</dt>
+        <dt>{{ t('schemeDialog.population') }}</dt>
         <dd>{{ population }}</dd>
-        <dt>迭代次数</dt>
+        <dt>{{ t('schemeDialog.generations') }}</dt>
         <dd>{{ generations }}</dd>
-        <dt>参与样式</dt>
+        <dt>{{ t('objectivePanel.activeLayers') }}</dt>
         <dd>{{ activeLayerCount }}</dd>
-        <dt>候选语义</dt>
+        <dt>{{ t('objectivePanel.candidateSemantics') }}</dt>
         <dd class="clip-value">{{ candidateSemanticsText }}</dd>
-        <dt>任务状态</dt>
+        <dt>{{ t('objectivePanel.jobStatus') }}</dt>
         <dd>{{ jobStatusText }}</dd>
       </dl>
     </section>
@@ -63,6 +63,7 @@ import { computed } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useI18n } from 'vue-i18n'
 import { useColorSchemeStore, type ColorSchemeWithId, type SchemeScores } from '@/stores'
+import { isMapSemanticValue } from '@/config/semanticOptions'
 
 const props = withDefaults(
   defineProps<{
@@ -97,15 +98,20 @@ const schemePosition = computed(() => {
   if (!total) return '0 / 0'
   return `${selectedSchemeIndex.value + 1} / ${total}`
 })
-const modeLabel = computed(() => (props.generationMode === 'global' ? '全局候选' : '局部候选'))
+const modeLabel = computed(() =>
+  props.generationMode === 'global' ? t('schemeDialog.globalMode') : t('schemeDialog.localMode'),
+)
 const activeLayerCount = computed(() => currentScheme.value.layers.length || activeScheme.value?.layers.length || 0)
 const candidateSemanticsText = computed(() => {
   const values = props.availableSemantics
-  return values.length ? values.join('、') : '未读取'
+  if (!values.length) return t('objectivePanel.notRead')
+  return values
+    .map(value => (isMapSemanticValue(value) ? t(`mapStyle.semantics.${value}`) : value))
+    .join(t('common.listSeparator'))
 })
 const jobStatusText = computed(() => {
-  if (!lastPipelineJobId.value) return '无任务'
-  return schemeGenerationReady.value ? '已就绪' : '未就绪'
+  if (!lastPipelineJobId.value) return t('objectivePanel.noJob')
+  return schemeGenerationReady.value ? t('objectivePanel.ready') : t('objectivePanel.notReady')
 })
 
 const scores = computed<SchemeScores | null>(() => {
@@ -127,7 +133,7 @@ const hasScores = computed(() => {
 })
 
 function formatScore(v: number): string {
-  if (Number.isNaN(v)) return '—'
+  if (Number.isNaN(v)) return t('common.empty')
   return (Math.round(v * 1000) / 1000).toFixed(3)
 }
 </script>

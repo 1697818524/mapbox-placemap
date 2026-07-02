@@ -51,6 +51,62 @@
 }
 ```
 
+## Place Search API
+
+Frontend wrapper: `frontend/src/api/mapbox.ts` keeps the existing
+`geocodingApi.search()` export, but it now calls the backend instead of the
+Mapbox Geocoding API.
+
+### `GET /api/places/search`
+
+Searches streets, scenic spots, buildings, and other POIs independently of
+Mapbox. Results always include coordinates that the frontend can pass directly
+to Mapbox.
+
+Query parameters:
+
+| Parameter | Type | Required | Description |
+| --- | --- | --- | --- |
+| `keyword` | string | Yes | Place, street, POI, or address keyword |
+| `limit` | number | No | Result count, default `10`, range `1-20` |
+| `city` | string | No | Optional AMap city hint |
+| `provider` | string | No | `auto`, `amap`, or `nominatim`; default follows backend config |
+
+Response: `PlaceSearchResult[]`
+
+```json
+[
+  {
+    "id": "amap:B0FFG...",
+    "name": "广州塔",
+    "address": "广东省广州市海珠区阅江西路222号",
+    "place_name": "广州塔 - 广东省广州市海珠区阅江西路222号",
+    "center": [113.3235, 23.1065],
+    "provider": "amap",
+    "raw_center": [113.3297, 23.1039],
+    "coordinate_system": "GCJ02",
+    "type": "风景名胜",
+    "confidence": 0.95
+  }
+]
+```
+
+Coordinate notes:
+
+- `center` is always `[lng, lat]` in WGS84 for Mapbox jump/navigation.
+- `raw_center` preserves the provider coordinate. AMap results are GCJ-02;
+  Nominatim results are WGS84.
+- When `provider=auto`, the backend tries AMap first if `AMAP_WEB_SERVICE_KEY`
+  is configured, then falls back to Nominatim.
+
+Backend environment variables:
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `AMAP_WEB_SERVICE_KEY` | empty | AMap Web Service API key |
+| `PLACE_SEARCH_PROVIDER` | `auto` | Default provider strategy |
+| `PLACE_SEARCH_TIMEOUT` | `8` | Provider request timeout in seconds |
+
 ## 图片接口
 
 前端封装：`frontend/src/api/image.ts`
@@ -357,8 +413,7 @@ Pipeline 阶段：
       {
         "id": "background",
         "color": "#F3EFEC",
-        "weight": 0,
-        "semantic": "base"
+        "weight": 0
       },
       {
         "id": "water",
@@ -374,7 +429,6 @@ Pipeline 阶段：
   "generations": 25,
   "semantic_mode": "local",
   "layer_semantics": {
-    "background": "base",
     "water": "water",
     "road-level-1": "roadnet",
     "road-level-2": "roadnet",
@@ -409,7 +463,6 @@ Pipeline 阶段：
 
 当前语义值：
 
-- `base`
 - `water`
 - `roadnet`
 - `architecture`
@@ -433,8 +486,7 @@ Pipeline 阶段：
         {
           "id": "background",
           "color": "#F3EFEC",
-          "weight": 0,
-          "semantic": "base"
+          "weight": 0
         },
         {
           "id": "water",

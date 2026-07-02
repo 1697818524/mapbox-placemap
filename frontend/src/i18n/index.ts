@@ -2,10 +2,13 @@ import { createI18n } from 'vue-i18n'
 import zhCN from './locales/zh-CN'
 import enUS from './locales/en-US'
 
+export type AppLocale = 'zh-CN' | 'en-US'
+export const DEFAULT_LOCALE: AppLocale = 'zh-CN'
+
 const i18n = createI18n({
   legacy: false,
-  locale: localStorage.getItem('locale') || 'zh-CN',
-  fallbackLocale: 'zh-CN',
+  locale: DEFAULT_LOCALE,
+  fallbackLocale: DEFAULT_LOCALE,
   silentTranslationWarn: true, // 禁用翻译警告
   silentFallbackWarn: true, // 禁用回退警告
   missingWarn: false, // 禁用缺失键警告

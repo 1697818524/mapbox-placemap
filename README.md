@@ -6,7 +6,7 @@ PlaceMap 是一个“地方感地图生成”应用：用户搜索地点、收�
 
 核心流程如下：
 
-1. 地点搜索：前端通过 Mapbox 定位地点并显示地图。
+1. 地点搜索：前端优先通过高德 Web 服务搜索地点并返回经纬度，后端提供统一地点搜索接口与兜底；Mapbox 只负责地图展示和跳转。
 2. 图片集构建：用户可以搜索当地图片，也可以上传本地图片；两类图片会合并为同一个样本图片集。
 3. 样本入库：后端把远程图片下载到 `backend/data/ingest/{location}/`，上传图片也保存到同一类目录，并返回 `image_ids`。
 4. Pipeline 构建：后端创建 pipeline job，按配置执行阴影处理、语义分割、超像素、语义分配、调色板聚类、方案生成等阶段。
@@ -17,7 +17,7 @@ PlaceMap 是一个“地方感地图生成”应用：用户搜索地点、收�
 
 | 控制项 | 前端 id | 默认语义 | Mapbox 目标 |
 | --- | --- | --- | --- |
-| 背景 | `background` | `base` | 背景/陆地底色 |
+| 背景 | `background` | 无 | 背景/陆地底色 |
 | 水体 | `water` | `water` | 水面、水道 |
 | 一级道路 | `road-level-1` | `roadnet` | 高速、主干路 |
 | 二级道路 | `road-level-2` | `roadnet` | 二级/三级道路、街道 |
@@ -74,7 +74,7 @@ mapbox-placemap/
 首次安装：
 
 ```powershell
-cd D:\任务\JSJ\mapbox-placemap
+cd E:\任务\mapbox-placemap
 npm install
 npm run install:backend
 npm run install:frontend
@@ -83,10 +83,10 @@ npm run install:frontend
 如果需要单独安装：
 
 ```powershell
-cd D:\任务\JSJ\mapbox-placemap\backend
+cd E:\任务\mapbox-placemap\backend
 pip install -r requirements.txt
 
-cd D:\任务\JSJ\mapbox-placemap\frontend
+cd E:\任务\mapbox-placemap\frontend
 npm install
 ```
 
@@ -95,7 +95,7 @@ npm install
 推荐从项目根目录同时启动前后端：
 
 ```powershell
-cd D:\任务\JSJ\mapbox-placemap
+cd E:\任务\mapbox-placemap
 npm run dev
 ```
 
@@ -108,10 +108,10 @@ npm run dev
 也可以分开启动：
 
 ```powershell
-cd D:\任务\JSJ\mapbox-placemap\backend
+cd E:\任务\mapbox-placemap\backend
 python -m app.main
 
-cd D:\任务\JSJ\mapbox-placemap\frontend
+cd E:\任务\mapbox-placemap\frontend
 npm run dev
 ```
 
@@ -126,14 +126,14 @@ $env:VITE_API_BASE_URL="http://127.0.0.1:8000"
 前端构建：
 
 ```powershell
-cd D:\任务\JSJ\mapbox-placemap\frontend
+cd E:\任务\mapbox-placemap\frontend
 npm run build
 ```
 
 后端语法检查：
 
 ```powershell
-cd D:\任务\JSJ\mapbox-placemap\backend
+cd E:\任务\mapbox-placemap\backend
 python -m compileall app
 ```
 
@@ -148,6 +148,29 @@ python -m compileall app
 - `ONEFORMER_SCRIPT_PATH`：语义分割脚本路径
 - `ONEFORMER_MODEL_DIR`：OneFormer 本地模型目录
 - `ONEFORMER_DEVICE`：默认 `cuda`
+- `AMAP_WEB_SERVICE_KEY`：高德 Web 服务 Key，用于地点/POI 搜索；不要提交真实 Key。
+- `PLACE_SEARCH_PROVIDER`：地点搜索供应商，默认 `auto`，可选 `auto`、`amap`、`nominatim`。
+- `PLACE_SEARCH_TIMEOUT`：地点搜索超时时间，默认 `8` 秒。
+
+本地开发需要创建或修改 `backend/.env`：
+
+```env
+AMAP_WEB_SERVICE_KEY=你的高德Web服务Key
+PLACE_SEARCH_PROVIDER=auto
+PLACE_SEARCH_TIMEOUT=8
+```
+
+前端浏览器侧会优先直接请求高德，以绕过部分本地 Python 网络访问限制。需要在 `frontend/.env.local` 中加入同一个 Key：
+
+```env
+VITE_AMAP_WEB_SERVICE_KEY=你的高德Web服务Key
+```
+
+注意：
+
+- 高德 Key 必须选择“Web服务”类型，不是“Web端 JS API”类型。
+- `backend/.env` 和 `frontend/.env.local` 已被 gitignore 忽略，只用于本机开发。
+- 如果没有配置高德 Key，系统仍会尝试 Nominatim 兜底，但中国大陆街道、景点、POI 精度会明显下降。
 
 前端地图样式配置在：
 

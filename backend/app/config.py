@@ -39,6 +39,11 @@ class Settings(BaseSettings):
     )
     MAX_IMAGE_SIZE: int = 2048
 
+    # Place search configuration
+    AMAP_WEB_SERVICE_KEY: str = ""
+    PLACE_SEARCH_PROVIDER: str = "auto"
+    PLACE_SEARCH_TIMEOUT: int = 8
+
     # 外部脚本配置（Day3）
     PIPELINE_PYTHON_EXE: str = sys.executable
     SHADOW_SCRIPT_PATH: str = str(PROJECT_DIR / "code.py")

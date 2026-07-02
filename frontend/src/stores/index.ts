@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import i18n from '@/i18n'
+import i18n, { DEFAULT_LOCALE, type AppLocale } from '@/i18n'
 import { storage } from '@/utils'
 import { MAP_CONFIG, STORAGE_KEYS } from '@/config'
 import { type MapState, type LngLatTuple } from '@/types/map'
@@ -39,14 +39,16 @@ export interface ColorSchemeWithId extends ColorScheme {
 }
 
 export const useAppStore = defineStore('app', () => {
-  const locale = ref<string>(storage.get<string>(STORAGE_KEYS.LOCALE, 'zh-CN') || 'zh-CN')
+  const locale = ref<AppLocale>(DEFAULT_LOCALE)
 
-  const setLocale = (lang: 'zh-CN' | 'en-US') => {
+  const setLocale = (lang: AppLocale) => {
     locale.value = lang
     i18n.global.locale.value = lang
     storage.set(STORAGE_KEYS.LOCALE, lang)
     document.documentElement.lang = lang
   }
+
+  setLocale(DEFAULT_LOCALE)
 
   return {
     locale,
@@ -57,6 +59,7 @@ export const useAppStore = defineStore('app', () => {
 export const useMapStore = defineStore('map', () => {
   const center = ref<MapState['center']>(MAP_CONFIG.DEFAULT_CENTER)
   const zoom = ref<MapState['zoom']>(MAP_CONFIG.DEFAULT_ZOOM)
+  const viewVersion = ref(0)
 
   const setCenter = (newCenter: LngLatTuple) => {
     center.value = newCenter
@@ -71,11 +74,13 @@ export const useMapStore = defineStore('map', () => {
     if (newZoom !== undefined) {
       zoom.value = newZoom
     }
+    viewVersion.value += 1
   }
 
   return {
     center,
     zoom,
+    viewVersion,
     setCenter,
     setZoom,
     setView,

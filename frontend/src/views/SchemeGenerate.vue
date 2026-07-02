@@ -40,51 +40,51 @@
     <el-dialog v-model="dialogVisible" width="560px" :show-close="!isGenerating">
       <template #header>
         <div class="dialog-head">
-          <h3>生成方案参数</h3>
-          <p>调整遗传搜索参数和候选色使用方式。</p>
+          <h3>{{ t('schemeDialog.title') }}</h3>
+          <p>{{ t('schemeDialog.description') }}</p>
         </div>
       </template>
       <div class="dialog-form">
         <div class="mode-row">
           <button type="button" class="mode-card" :class="{ active: semanticMode === 'local' }" @click="semanticMode = 'local'">
-            <strong>局部候选</strong>
-            <span>样式使用对应语义；缺少候选时可临时改派。</span>
+            <strong>{{ t('schemeDialog.localMode') }}</strong>
+            <span>{{ t('schemeDialog.localDescription') }}</span>
           </button>
           <button type="button" class="mode-card" :class="{ active: semanticMode === 'global' }" @click="semanticMode = 'global'">
-            <strong>全局候选</strong>
-            <span>每个样式可使用所有语义候选色。</span>
+            <strong>{{ t('schemeDialog.globalMode') }}</strong>
+            <span>{{ t('schemeDialog.globalDescription') }}</span>
           </button>
         </div>
         <div class="number-grid">
           <label>
-            <span>种群数</span>
+            <span>{{ t('schemeDialog.population') }}</span>
             <el-input-number v-model="population" :min="8" :max="200" :step="4" size="small" />
           </label>
           <label>
-            <span>迭代次数</span>
+            <span>{{ t('schemeDialog.generations') }}</span>
             <el-input-number v-model="generations" :min="1" :max="200" :step="5" size="small" />
           </label>
         </div>
         <div v-if="semanticMode === 'local'" class="semantic-list">
-          <div v-for="layer in currentScheme.layers" :key="layer.id" class="semantic-row">
+          <div v-for="layer in semanticSchemeLayers" :key="layer.id" class="semantic-row">
             <span>{{ layerName(layer.id) }}</span>
             <el-select v-model="layerSemantics[layer.id]" size="small">
               <el-option
                 v-for="option in semanticOptionsWithState"
                 :key="option.value"
-                :label="option.label"
+                :label="t(option.labelKey)"
                 :value="option.value"
                 :disabled="option.disabled"
               />
             </el-select>
           </div>
           <p v-if="availableSemantics.length" class="semantic-hint">
-            灰色语义表示当前样本集没有候选色。可用候选：{{ availableSemantics.join('、') }}
+            {{ t('schemeDialog.availableSemantics', { values: availableSemanticLabels }) }}
           </p>
         </div>
       </div>
       <template #footer>
-        <el-button :disabled="isGenerating" @click="dialogVisible = false">取消</el-button>
+        <el-button :disabled="isGenerating" @click="dialogVisible = false">{{ t('common.cancel') }}</el-button>
         <el-tooltip :content="localGenerateBlockedReason" placement="top" :disabled="!localGenerateBlocked">
           <span>
             <el-button
@@ -93,7 +93,7 @@
               :disabled="localGenerateBlocked"
               @click="onGenerateSchemes"
             >
-              开始生成
+              {{ t('schemeDialog.start') }}
             </el-button>
           </span>
         </el-tooltip>
@@ -114,6 +114,7 @@ import ObjectiveScoresPanel from '@/components/ObjectiveScoresPanel.vue'
 import { useColorSchemeStore } from '@/stores'
 import { schemeApi } from '@/api/scheme'
 import { pipelineApi } from '@/api/pipeline'
+import { MAP_SEMANTIC_OPTIONS, isMapSemanticValue } from '@/config/semanticOptions'
 import type { MapboxMapInstance } from '@/composables'
 
 const { t } = useI18n()
@@ -131,14 +132,7 @@ const population = ref(40)
 const generations = ref(25)
 const availableSemantics = ref<string[]>([])
 const layerSemantics = ref<Record<string, string>>({})
-const semanticOptions = [
-  { label: '底色', value: 'base' },
-  { label: '水体', value: 'water' },
-  { label: '路网', value: 'roadnet' },
-  { label: '建筑', value: 'architecture' },
-  { label: '绿地/土地', value: 'green' },
-  { label: '地标', value: 'landmark' },
-]
+const semanticOptions = MAP_SEMANTIC_OPTIONS
 const semanticOptionsWithState = computed(() => {
   const available = new Set(availableSemantics.value)
   return semanticOptions.map(option => ({
@@ -146,11 +140,19 @@ const semanticOptionsWithState = computed(() => {
     disabled: available.size === 0 || !available.has(option.value),
   }))
 })
+const semanticSchemeLayers = computed(() =>
+  currentScheme.value.layers.filter(layer => !!layer.semantic && layer.semantic !== 'base'),
+)
+const availableSemanticLabels = computed(() =>
+  availableSemantics.value
+    .map(value => (isMapSemanticValue(value) ? t(`mapStyle.semantics.${value}`) : value))
+    .join(t('common.listSeparator')),
+)
 const missingLocalLayers = computed(() => {
   if (semanticMode.value !== 'local') return []
-  if (availableSemantics.value.length === 0) return currentScheme.value.layers
+  if (availableSemantics.value.length === 0) return semanticSchemeLayers.value
   const available = new Set(availableSemantics.value)
-  return currentScheme.value.layers.filter(layer => {
+  return semanticSchemeLayers.value.filter(layer => {
     const sem = layerSemantics.value[layer.id] || layer.semantic || 'green'
     return !available.has(sem)
   })
@@ -158,7 +160,9 @@ const missingLocalLayers = computed(() => {
 const localGenerateBlocked = computed(() => missingLocalLayers.value.length > 0 || isGenerating.value)
 const localGenerateBlockedReason = computed(() => {
   if (isGenerating.value || !missingLocalLayers.value.length) return ''
-  return `局部模式下这些样式缺少候选语义：${missingLocalLayers.value.map(layer => layerName(layer.id)).join('、')}。请改选可用语义。`
+  return t('schemeDialog.missingLocalLayers', {
+    layers: missingLocalLayers.value.map(layer => layerName(layer.id)).join(t('common.listSeparator')),
+  })
 })
 const canGenerate = computed(
   () =>
@@ -175,16 +179,17 @@ const regenerateBlockedReason = computed(() => {
 })
 
 function layerName(id: string): string {
-  const names: Record<string, string> = {
-    background: '背景',
-    water: '水体',
-    'road-level-1': '一级道路',
-    'road-level-2': '二级道路',
-    'road-level-3': '三级道路',
-    building: '建筑物',
-    landuse: '土地利用',
+  const nameKeys: Record<string, string> = {
+    background: 'background',
+    water: 'water',
+    'road-level-1': 'roadLevel1',
+    'road-level-2': 'roadLevel2',
+    'road-level-3': 'roadLevel3',
+    building: 'building',
+    landuse: 'landuse',
   }
-  return names[id] || id
+  const key = nameKeys[id]
+  return key ? t(`mapStyle.layers.${key}`) : id
 }
 
 async function loadAvailableSemantics() {
@@ -207,11 +212,20 @@ async function openGenerateDialog() {
     ElMessage.warning(regenerateBlockedReason.value)
     return
   }
-  currentScheme.value.layers.forEach(layer => {
+  semanticSchemeLayers.value.forEach(layer => {
     layerSemantics.value[layer.id] = layerSemantics.value[layer.id] || layer.semantic || 'green'
   })
   await loadAvailableSemantics()
   dialogVisible.value = true
+}
+
+function layerSemanticsPayload(): Record<string, string> {
+  const semanticLayerIds = new Set(semanticSchemeLayers.value.map(layer => layer.id))
+  return Object.fromEntries(
+    Object.entries(layerSemantics.value).filter(
+      ([layerId, semantic]) => semanticLayerIds.has(layerId) && !!semantic && semantic !== 'base',
+    ),
+  )
 }
 
 async function onGenerateSchemes() {
@@ -237,7 +251,7 @@ async function onGenerateSchemes() {
       population: population.value,
       generations: generations.value,
       semanticMode: semanticMode.value,
-      layerSemantics: semanticMode.value === 'local' ? layerSemantics.value : {},
+      layerSemantics: semanticMode.value === 'local' ? layerSemanticsPayload() : {},
     })
     colorSchemeStore.setColorSchemes(response.schemes)
     dialogVisible.value = false

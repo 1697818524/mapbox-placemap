@@ -3,12 +3,14 @@
     <div class="collection-divider"></div>
 
     <div class="collection-head">
-      <span class="collection-label">图片集 <strong>{{ total }}</strong><span class="label-dim">/{{ max }}</span></span>
-      <span v-if="!loading && ready" class="badge-done">已就绪</span>
+      <span class="collection-label">
+        {{ t('imageCollection.title') }} <strong>{{ total }}</strong><span class="label-dim">/{{ max }}</span>
+      </span>
+      <span v-if="!loading && ready" class="badge-done">{{ t('imageCollection.ready') }}</span>
     </div>
 
     <div v-if="total === 0" class="collection-empty">
-      选择当地图片或上传自己的图片
+      {{ t('imageCollection.empty') }}
     </div>
 
     <div v-else class="collection-grid" :class="{ 'grid-3col': total >= 5 }">
@@ -19,18 +21,18 @@
       >
         <img
           :src="getImageProxyUrl(item.image.thumbnail || item.image.url)"
-          :alt="item.image.title || '当地图片'"
+          :alt="item.image.title || t('imageCollection.localImageAlt')"
           referrerpolicy="no-referrer"
           loading="lazy"
         />
-        <button class="remove-btn" type="button" @click="$emit('remove-search', item.index)" title="移除">
+        <button class="remove-btn" type="button" @click="$emit('remove-search', item.index)" :title="t('common.remove')">
           <span class="remove-icon"></span>
         </button>
       </div>
 
       <div v-for="item in localPreviewItems" :key="item.key" class="collection-card">
         <img :src="item.url" :alt="item.file.name" loading="lazy" />
-        <button class="remove-btn" type="button" @click="$emit('remove-local', item.index)" title="移除">
+        <button class="remove-btn" type="button" @click="$emit('remove-local', item.index)" :title="t('common.remove')">
           <span class="remove-icon"></span>
         </button>
       </div>
@@ -50,14 +52,14 @@
         @change="onPicked"
       />
       <button class="act-upload" @click="fileInputRef?.click()">
-        <span class="act-icon">+</span> 上传
+        <span class="act-icon">+</span> {{ t('imageCollection.upload') }}
       </button>
       <button
         class="act-confirm"
         :disabled="total === 0 || loading || ready"
         @click="$emit('confirm')"
       >
-        {{ ready ? '已提取' : loading ? '提取中…' : '提取候选色' }}
+        {{ ready ? t('imageCollection.extracted') : loading ? t('imageCollection.extracting') : t('imageCollection.extract') }}
       </button>
     </div>
   </section>
@@ -65,6 +67,7 @@
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { getImageProxyUrl } from '@/api'
 import type { ImageResult } from '@/types/api'
 
@@ -85,6 +88,7 @@ const emit = defineEmits<{
   confirm: []
 }>()
 
+const { t } = useI18n()
 const fileInputRef = ref<HTMLInputElement | null>(null)
 const objectUrls = ref<string[]>([])
 

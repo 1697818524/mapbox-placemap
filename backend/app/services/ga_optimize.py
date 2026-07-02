@@ -108,7 +108,7 @@ def _lock_background_layer(layers: List[ColorSchemeItem], background_hex: str) -
         else:
             out.append(layer)
     if not has_background:
-        out.insert(0, ColorSchemeItem(id="background", color=background_hex, weight=0.0, semantic="base"))
+        out.insert(0, ColorSchemeItem(id="background", color=background_hex, weight=0.0))
     return out
 
 

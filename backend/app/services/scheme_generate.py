@@ -28,7 +28,6 @@ SCHEME_LAYER_ORDER: Tuple[str, ...] = (
 )
 
 LAYER_ID_TO_SEMANTIC: Dict[str, str] = {
-    "background": "base",
     "water": "water",
     "road-level-1": "roadnet",
     "road-level-2": "roadnet",
@@ -38,13 +37,13 @@ LAYER_ID_TO_SEMANTIC: Dict[str, str] = {
 }
 
 SEMANTIC_DEFAULT_HEX: Dict[str, str] = {
-    "base": "#F3EFEC",
     "water": "#4A90D9",
     "roadnet": "#E6E6E8",
     "architecture": "#D4CBBE",
     "green": "#C5E1A5",
     "landmark": "#5C5C5C",
 }
+DEFAULT_BACKGROUND_HEX = "#F3EFEC"
 
 
 def _normalize_scheme_layers(base: ColorScheme, layer_semantics: Optional[Dict[str, str]] = None) -> ColorScheme:
@@ -55,12 +54,12 @@ def _normalize_scheme_layers(base: ColorScheme, layer_semantics: Optional[Dict[s
     w = 1.0 / n if n else 0.0
     layers: List[ColorSchemeItem] = []
     for lid in SCHEME_LAYER_ORDER:
-        sem = overrides.get(lid) or LAYER_ID_TO_SEMANTIC[lid]
+        sem = None if lid == "background" else overrides.get(lid) or LAYER_ID_TO_SEMANTIC.get(lid)
         item = by_id.get(lid)
         layers.append(
             ColorSchemeItem(
                 id=lid,
-                color=item.color if item else SEMANTIC_DEFAULT_HEX.get(sem, "#888888"),
+                color=item.color if item else (DEFAULT_BACKGROUND_HEX if lid == "background" else SEMANTIC_DEFAULT_HEX.get(sem or "", "#888888")),
                 weight=w,
                 semantic=sem,
             )
@@ -75,8 +74,8 @@ def default_color_scheme() -> ColorScheme:
     w = 1.0 / n if n else 0.0
     layers: List[ColorSchemeItem] = []
     for lid in ids:
-        sem = LAYER_ID_TO_SEMANTIC[lid]
-        hex_c = SEMANTIC_DEFAULT_HEX.get(sem, "#888888")
+        sem = LAYER_ID_TO_SEMANTIC.get(lid)
+        hex_c = DEFAULT_BACKGROUND_HEX if lid == "background" else SEMANTIC_DEFAULT_HEX.get(sem or "", "#888888")
         layers.append(ColorSchemeItem(id=lid, color=hex_c, weight=w, semantic=sem))
     return ColorScheme(layers=layers)
 
@@ -251,7 +250,7 @@ def _readability_score(layers: List[ColorSchemeItem]) -> float:
 
 def _background_hex_from_layers(layers: List[ColorSchemeItem]) -> str:
     bg = next((x.color for x in layers if x.id == "background"), None)
-    return bg or SEMANTIC_DEFAULT_HEX["base"]
+    return bg or DEFAULT_BACKGROUND_HEX
 
 
 def _layers_to_objective_palette(layers: List[ColorSchemeItem]) -> Dict[str, List[Tuple[str, float]]]:
@@ -282,7 +281,7 @@ def _dual_objective_scores(layers: List[ColorSchemeItem], cluster_dir: Optional[
         place = color_objectives.place_representativeness_score(
             _layers_to_objective_palette(layers),
             color_objectives.build_cluster_csv_paths(cluster_dir),
-            background_semantic="base",
+            background_semantic="green",
             background_hex=_background_hex_from_layers(layers),
         )
         return harmony, float(place["overall"])

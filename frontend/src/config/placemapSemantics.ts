@@ -2,7 +2,6 @@
  * 图层控制项 id -> 粗语义（与后端 semantic_assign / scheme_generate 五类一致）
  */
 export const LAYER_ID_TO_SEMANTIC: Record<string, string> = {
-  background: 'base',
   water: 'water',
   'road-level-1': 'roadnet',
   'road-level-2': 'roadnet',

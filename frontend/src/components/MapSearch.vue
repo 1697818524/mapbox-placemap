@@ -21,15 +21,20 @@
           class="search-result-item"
           @click="handleSelectLocation(result)"
         >
-          <div class="result-name">{{ result.place_name }}</div>
-          <div class="result-address">{{ result.text }}</div>
+          <div class="result-name">{{ result.name || result.text }}</div>
+          <div class="result-address">
+            <span v-if="result.provider" class="provider-badge">{{ result.provider }}</span>
+            <span>{{ result.address || result.place_name }}</span>
+          </div>
         </div>
       </div>
     </div>
     <div v-if="selectedLocation" class="location-line">
       <span class="loc-dot"></span>
       <span class="loc-name">{{ selectedLocation.place_name }}</span>
-      <span class="loc-coord">{{ selectedLocation.center[0].toFixed(2) }}, {{ selectedLocation.center[1].toFixed(2) }}</span>
+      <span class="loc-coord">
+        {{ selectedLocation.center[0].toFixed(2) }}, {{ selectedLocation.center[1].toFixed(2) }}
+      </span>
     </div>
   </div>
 </template>
@@ -38,6 +43,7 @@
 import { watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Search } from '@element-plus/icons-vue'
+import { ElMessage } from 'element-plus'
 import { useMapStore } from '@/stores'
 import { useGeocoding, useDebounce } from '@/composables'
 import { API_CONFIG } from '@/config'
@@ -46,23 +52,19 @@ import type { GeocodeFeature } from '@/types/api'
 const { t } = useI18n()
 const mapStore = useMapStore()
 
-// 定义事件
 const emit = defineEmits<{
   'search-enter': []
   'location-selected': [location: GeocodeFeature]
 }>()
 
-// 使用地理编码组合式函数
 const { searchQuery, searchResults, selectedLocation, isSearching, doSearch, selectLocation } =
   useGeocoding()
 
-// 使用防抖函数
 const { debouncedFn: debouncedSearch, cancel: cancelSearch } = useDebounce(
   doSearch,
-  API_CONFIG.DEBOUNCE_DELAY
+  API_CONFIG.DEBOUNCE_DELAY,
 )
 
-// 搜索处理函数，带防抖
 const handleSearch = () => {
   if (!searchQuery.value || searchQuery.value.trim().length < API_CONFIG.SEARCH_MIN_LENGTH) {
     searchResults.value = []
@@ -71,35 +73,37 @@ const handleSearch = () => {
   debouncedSearch()
 }
 
-// 回车搜索
-const handleSearchEnter = () => {
+const handleSearchEnter = async () => {
   cancelSearch()
   if (!searchQuery.value || searchQuery.value.trim().length < API_CONFIG.SEARCH_MIN_LENGTH) {
     searchResults.value = []
     return
   }
-  doSearch()
-  // 触发事件，通知父组件进行图片搜索
+
+  const results = await doSearch()
+  const first = results[0]
+  if (first?.center) {
+    handleSelectLocation(first)
+    return
+  }
+
+  ElMessage.warning(t('mapInfo.noJumpablePlace'))
   emit('search-enter')
 }
 
-// 选择位置并跳转地图
 const handleSelectLocation = (location: GeocodeFeature) => {
   selectLocation(location)
   const [lng, lat] = location.center
   mapStore.setView([lng, lat], 14)
-  // 触发地点选择事件，通知父组件进行图片搜索
   emit('location-selected', location)
 }
 
-// 监听搜索框清空
 watch(searchQuery, newVal => {
   if (!newVal) {
     searchResults.value = []
   }
 })
 
-// 暴露给父组件的方法和属性
 defineExpose({
   selectedLocation,
   searchQuery,
@@ -178,6 +182,28 @@ defineExpose({
   margin-top: 2px;
   font-size: 12px;
   color: #8b8f98;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.result-address span:last-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.provider-badge {
+  flex-shrink: 0;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: #eef2ff;
+  color: #4f46e5;
+  font-size: 10px;
+  line-height: 16px;
+  text-transform: uppercase;
 }
 
 .location-line {

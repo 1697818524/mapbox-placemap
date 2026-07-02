@@ -37,7 +37,7 @@
                   @change="(color: string | null) => updateLayerColor(layer, color)"
                 />
                 <el-button size="small" text class="studio-reset-btn" @click="resetLayerColor(layer)">
-                  重置
+                  {{ t('mapStyle.reset') }}
                 </el-button>
               </div>
             </div>
@@ -49,8 +49,8 @@
     <el-dialog v-model="schemeDialogVisible" width="560px" class="scheme-dialog" :show-close="!isGenerating">
       <template #header>
         <div class="scheme-dialog-head">
-          <h3>生成方案参数</h3>
-          <p>选择候选色使用方式，并设置遗传搜索参数。</p>
+          <h3>{{ t('schemeDialog.title') }}</h3>
+          <p>{{ t('schemeDialog.description') }}</p>
         </div>
       </template>
 
@@ -62,8 +62,8 @@
             :class="{ active: schemeMode === 'local' }"
             @click="schemeMode = 'local'"
           >
-            <strong>局部候选</strong>
-            <span>样式优先使用对应语义的候选色；缺少语义时可在下方改派。</span>
+            <strong>{{ t('schemeDialog.localMode') }}</strong>
+            <span>{{ t('schemeDialog.localDescription') }}</span>
           </button>
           <button
             type="button"
@@ -71,47 +71,47 @@
             :class="{ active: schemeMode === 'global' }"
             @click="schemeMode = 'global'"
           >
-            <strong>全局候选</strong>
-            <span>每个样式都可以从所有语义候选色中取色。</span>
+            <strong>{{ t('schemeDialog.globalMode') }}</strong>
+            <span>{{ t('schemeDialog.globalDescription') }}</span>
           </button>
         </div>
 
         <div class="number-grid">
           <label>
-            <span>种群数</span>
+            <span>{{ t('schemeDialog.population') }}</span>
             <el-input-number v-model="schemePopulation" :min="8" :max="200" :step="4" size="small" />
           </label>
           <label>
-            <span>迭代次数</span>
+            <span>{{ t('schemeDialog.generations') }}</span>
             <el-input-number v-model="schemeGenerations" :min="1" :max="200" :step="5" size="small" />
           </label>
         </div>
 
         <div v-if="schemeMode === 'local'" class="semantic-editor">
           <div class="semantic-editor-head">
-            <strong>局部语义映射</strong>
-            <span>如果某个样式没有对应候选色，可以临时赋予其他语义。</span>
+            <strong>{{ t('schemeDialog.semanticMapping') }}</strong>
+            <span>{{ t('schemeDialog.semanticMappingHint') }}</span>
           </div>
-          <div v-for="layer in modelLayers" :key="layer.id" class="semantic-row">
+          <div v-for="layer in semanticEditableLayers" :key="layer.id" class="semantic-row">
             <span>{{ getLayerName(layer.nameKey) }}</span>
             <el-select v-model="layerSemanticDraft[layer.id]" size="small">
               <el-option
                 v-for="option in semanticOptionsWithState"
                 :key="option.value"
-                :label="option.label"
+                :label="t(option.labelKey)"
                 :value="option.value"
                 :disabled="option.disabled"
               />
             </el-select>
           </div>
           <p v-if="availableSemantics.length" class="semantic-hint">
-            灰色语义表示当前样本集没有候选色。可用候选：{{ availableSemantics.join('、') }}
+            {{ t('schemeDialog.availableSemantics', { values: availableSemanticLabels }) }}
           </p>
         </div>
       </div>
 
       <template #footer>
-        <el-button :disabled="isGenerating" @click="schemeDialogVisible = false">取消</el-button>
+        <el-button :disabled="isGenerating" @click="schemeDialogVisible = false">{{ t('common.cancel') }}</el-button>
         <el-tooltip :content="localGenerateBlockedReason" placement="top" :disabled="!localGenerateBlocked">
           <span>
             <el-button
@@ -120,7 +120,7 @@
               :disabled="localGenerateBlocked"
               @click="confirmGenerateSchemes"
             >
-              {{ isGenerating ? t('mapStyle.generating') : '开始生成' }}
+              {{ isGenerating ? t('mapStyle.generating') : t('schemeDialog.start') }}
             </el-button>
           </span>
         </el-tooltip>
@@ -128,10 +128,10 @@
     </el-dialog>
 
     <div class="style-file-actions">
-      <span>样式文件</span>
+      <span>{{ t('mapStyle.styleFile') }}</span>
       <div>
-        <el-button size="small" @click="exportStyleConfig">导出样式</el-button>
-        <el-button size="small" @click="triggerImportStyle">导入样式</el-button>
+        <el-button size="small" @click="exportStyleConfig">{{ t('mapStyle.exportStyle') }}</el-button>
+        <el-button size="small" @click="triggerImportStyle">{{ t('mapStyle.importStyle') }}</el-button>
       </div>
     </div>
 
@@ -178,19 +178,17 @@ import { semanticForLayerId } from '@/config/placemapSemantics'
 import {
   baseLayers,
   waterLayers,
-  waterLabelLayers,
   roadLevel1Layers,
   roadLevel2Layers,
   roadLevel3Layers,
-  roadLabelLayers,
   buildingLayers,
   greenLayers,
-  landmarkLabelLayers,
   getAllConfigurableLayers,
   getLayerTargets,
   type LayerConfig,
   type LayerTarget,
 } from '@/config/mapStyleLayers'
+import { MAP_SEMANTIC_OPTIONS, isMapSemanticValue } from '@/config/semanticOptions'
 import { useColorSchemeStore, type ColorScheme, type ColorSchemeItem } from '@/stores'
 import { schemeApi } from '@/api/scheme'
 import { pipelineApi } from '@/api/pipeline'
@@ -213,8 +211,8 @@ if (!mapInstanceRef) {
 const colorSchemeStore = useColorSchemeStore()
 const { colorSchemes, selectedSchemeIndex, schemeGenerationReady, lastPipelineJobId } = storeToRefs(colorSchemeStore)
 const getMap = (): MapboxMapInstance | null => mapInstanceRef.value
+const isGalleryMode = computed(() => props.footerMode === 'gallery')
 
-const showLabelLayers = ref(false)
 const activeCategories = ref<string[]>([
   'base',
   'water',
@@ -242,32 +240,28 @@ interface ExportedStyleConfig {
 
 const styleCategories = computed(() => {
   const categories: Array<{ name: string; title: string; layers: LayerConfig[] }> = [
-    { name: 'base', title: '背景', layers: baseLayers },
+    { name: 'base', title: t('mapStyle.layers.background'), layers: baseLayers },
     {
       name: 'water',
-      title: '水体',
-      layers: showLabelLayers.value ? [...waterLayers, ...waterLabelLayers] : waterLayers,
+      title: t('mapStyle.water'),
+      layers: waterLayers,
     },
-    { name: 'roadLevel1', title: '一级道路', layers: roadLevel1Layers },
+    { name: 'roadLevel1', title: t('mapStyle.layers.roadLevel1'), layers: roadLevel1Layers },
     {
       name: 'roadLevel2',
-      title: '二级道路',
-      layers: showLabelLayers.value ? [...roadLevel2Layers, ...roadLabelLayers] : roadLevel2Layers,
+      title: t('mapStyle.layers.roadLevel2'),
+      layers: roadLevel2Layers,
     },
-    { name: 'roadLevel3', title: '三级道路', layers: roadLevel3Layers },
+    { name: 'roadLevel3', title: t('mapStyle.layers.roadLevel3'), layers: roadLevel3Layers },
     { name: 'buildings', title: t('mapStyle.buildings'), layers: buildingLayers },
     { name: 'green', title: t('mapStyle.green'), layers: greenLayers },
   ]
-
-  if (showLabelLayers.value) {
-    categories.push({ name: 'landmarkLabels', title: '地名 / 兴趣点', layers: landmarkLabelLayers })
-  }
 
   return categories
 })
 
 const modelLayers = computed(() => getAllConfigurableLayers({ includeLabels: false }))
-const allKnownLayers = computed(() => getAllConfigurableLayers({ includeLabels: true }))
+const allKnownLayers = computed(() => getAllConfigurableLayers({ includeLabels: false }))
 
 const predefineColors = [
   '#F3EFEC',
@@ -302,14 +296,7 @@ const schemePopulation = ref(40)
 const schemeGenerations = ref(25)
 const availableSemantics = ref<string[]>([])
 const layerSemanticDraft = reactive<Record<string, string>>({})
-const semanticOptions = [
-  { label: '底色', value: 'base' },
-  { label: '水体', value: 'water' },
-  { label: '路网', value: 'roadnet' },
-  { label: '建筑', value: 'architecture' },
-  { label: '绿地/土地', value: 'green' },
-  { label: '地标', value: 'landmark' },
-]
+const semanticOptions = MAP_SEMANTIC_OPTIONS
 const semanticOptionsWithState = computed(() => {
   const available = new Set(availableSemantics.value)
   return semanticOptions.map(option => ({
@@ -317,11 +304,17 @@ const semanticOptionsWithState = computed(() => {
     disabled: available.size === 0 || !available.has(option.value),
   }))
 })
+const semanticEditableLayers = computed(() => modelLayers.value.filter(layer => !!semanticForLayerId(layer.id)))
+const availableSemanticLabels = computed(() =>
+  availableSemantics.value
+    .map(value => (isMapSemanticValue(value) ? t(`mapStyle.semantics.${value}`) : value))
+    .join(t('common.listSeparator')),
+)
 const missingLocalLayers = computed(() => {
   if (schemeMode.value !== 'local') return []
-  if (availableSemantics.value.length === 0) return modelLayers.value
+  if (availableSemantics.value.length === 0) return semanticEditableLayers.value
   const available = new Set(availableSemantics.value)
-  return modelLayers.value.filter(layer => {
+  return semanticEditableLayers.value.filter(layer => {
     const sem = layerSemanticDraft[layer.id] || semanticForLayerId(layer.id) || 'green'
     return !available.has(sem)
   })
@@ -329,7 +322,9 @@ const missingLocalLayers = computed(() => {
 const localGenerateBlocked = computed(() => missingLocalLayers.value.length > 0 || isGenerating.value)
 const localGenerateBlockedReason = computed(() => {
   if (isGenerating.value || !missingLocalLayers.value.length) return ''
-  return `局部模式下这些样式缺少候选语义：${missingLocalLayers.value.map(layer => getLayerName(layer.nameKey)).join('、')}。请改选可用语义。`
+  return t('schemeDialog.missingLocalLayers', {
+    layers: missingLocalLayers.value.map(layer => getLayerName(layer.nameKey)).join(t('common.listSeparator')),
+  })
 })
 const sampleSetReady = computed(() => schemeGenerationReady.value && !!lastPipelineJobId.value)
 const canGenerate = computed(
@@ -338,7 +333,7 @@ const canGenerate = computed(
 const generateBlockedReason = computed(() => {
   if (props.footerMode !== 'generate') return ''
   if (colorSchemeStore.currentScheme.layers.length === 0) return t('mapStyle.noCurrentScheme')
-  if (!sampleSetReady.value) return '请先在图片集点击“确认提取候选颜色”'
+  if (!sampleSetReady.value) return t('mapStyle.generateBlockedNeedPipeline')
   return ''
 })
 
@@ -351,9 +346,20 @@ function galleryNext() {
 }
 
 function syncSemanticDraft() {
-  modelLayers.value.forEach(layer => {
+  semanticEditableLayers.value.forEach(layer => {
     layerSemanticDraft[layer.id] = layerSemanticDraft[layer.id] || semanticForLayerId(layer.id) || 'green'
   })
+}
+
+function semanticLayerDraftPayload(): Record<string, string> {
+  const payload: Record<string, string> = {}
+  semanticEditableLayers.value.forEach(layer => {
+    const semantic = layerSemanticDraft[layer.id]
+    if (semantic && semantic !== 'base') {
+      payload[layer.id] = semantic
+    }
+  })
+  return payload
 }
 
 async function loadAvailableSemantics() {
@@ -403,7 +409,7 @@ async function confirmGenerateSchemes() {
   isGenerating.value = true
   try {
     if (!sampleSetReady.value) {
-      ElMessage.warning('请先在图片集点击“确认提取候选颜色”')
+      ElMessage.warning(t('mapStyle.generateBlockedNeedPipeline'))
       return
     }
 
@@ -414,14 +420,14 @@ async function confirmGenerateSchemes() {
       population: schemePopulation.value,
       generations: schemeGenerations.value,
       semanticMode: schemeMode.value,
-      layerSemantics: schemeMode.value === 'local' ? { ...layerSemanticDraft } : {},
+      layerSemantics: schemeMode.value === 'local' ? semanticLayerDraftPayload() : {},
     })
     colorSchemeStore.setColorSchemes(response.schemes)
     ElMessage.success(t('mapStyle.generateSuccess', { count: response.schemes.length }))
     schemeDialogVisible.value = false
     await router.push('/generate')
   } catch (error) {
-    console.error('生成方案失败:', error)
+    console.error('Failed to generate schemes:', error)
     ElMessage.error(error instanceof Error ? error.message : t('mapStyle.generateError'))
   } finally {
     isGenerating.value = false
@@ -460,20 +466,29 @@ const mapStyleLayers = (): Array<{ id: string; type?: string }> => {
   }
 }
 
-const hideMapboxDecorations = () => {
+const shouldHidePoiLayer = (layerId: string): boolean => {
+  const lower = layerId.toLowerCase()
+  return [
+    'poi',
+    'transit',
+    'station',
+    'airport',
+    'parking',
+    'medical',
+    'school',
+    'shop',
+    'restaurant',
+    'commercial',
+  ].some(token => lower.includes(token))
+}
+
+const applyMapLabelVisibility = () => {
   const map = getMap()
   if (!map || !map.isStyleLoaded()) return
 
   mapStyleLayers().forEach(styleLayer => {
-    const lower = styleLayer.id.toLowerCase()
     try {
-      if (styleLayer.type === 'symbol') {
-        map.setLayoutProperty(styleLayer.id, 'visibility', 'none')
-      }
-      if (
-        styleLayer.type === 'line' &&
-        (lower.includes('motorway') || lower.includes('trunk') || lower.includes('primary'))
-      ) {
+      if (styleLayer.type === 'symbol' && shouldHidePoiLayer(styleLayer.id)) {
         map.setLayoutProperty(styleLayer.id, 'visibility', 'none')
       }
     } catch (error) {
@@ -616,7 +631,7 @@ const applyColorsToMap = () => {
     if (!layer || !color) return
     resolveLayerTargets(layer).forEach(target => setTargetColor(target, color))
   })
-  hideMapboxDecorations()
+  applyMapLabelVisibility()
 }
 
 const resetTargetColorToDefault = (target: LayerTarget) => {
@@ -677,7 +692,7 @@ const exportStyleConfig = () => {
   document.body.appendChild(link)
   link.click()
   document.body.removeChild(link)
-  URL.revokeObjectURL(url)
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
 
 const triggerImportStyle = () => {
@@ -693,7 +708,7 @@ const isStyleLayer = (value: unknown): value is ExportedStyleLayer => {
 const applyImportedStyle = (payload: unknown) => {
   const raw = payload as Partial<ExportedStyleConfig>
   if (!raw || !Array.isArray(raw.layers)) {
-    throw new Error('样式文件格式不正确')
+    throw new Error(t('mapStyle.importInvalid'))
   }
   const layerById = new Map(modelLayers.value.map(layer => [layer.id, layer]))
   let applied = 0
@@ -704,13 +719,13 @@ const applyImportedStyle = (payload: unknown) => {
     if (!layer || !color) return
     layerColors[layer.id] = color
     resolveLayerTargets(layer).forEach(target => setTargetColor(target, color))
-    if (item.semantic) {
+    if (item.semantic && item.semantic !== 'base') {
       layerSemanticDraft[layer.id] = item.semantic
     }
     applied += 1
   })
   if (!applied) {
-    throw new Error('未找到可导入的样式图层')
+    throw new Error(t('mapStyle.importNoLayers'))
   }
   updateColorSchemeInStore()
 }
@@ -723,9 +738,9 @@ const handleImportStyle = async (event: Event) => {
   try {
     const text = await file.text()
     applyImportedStyle(JSON.parse(text))
-    ElMessage.success('样式导入成功')
+    ElMessage.success(t('mapStyle.importSuccess'))
   } catch (error) {
-    ElMessage.error(error instanceof Error ? error.message : '样式导入失败')
+    ElMessage.error(error instanceof Error ? error.message : t('mapStyle.importFailed'))
   }
 }
 
@@ -748,17 +763,44 @@ const rgbToHex = (rgb: string): string | null => {
   return `#${toHex(r)}${toHex(g)}${toHex(b)}`.toUpperCase()
 }
 
+const hslToHex = (hsl: string): string | null => {
+  const match = hsl.match(/hsla?\(([-\d.]+),\s*([-\d.]+)%?,\s*([-\d.]+)%?/)
+  if (!match) return null
+  let h = Number(match[1])
+  let s = Number(match[2]) / 100
+  let l = Number(match[3]) / 100
+  if (!Number.isFinite(h) || !Number.isFinite(s) || !Number.isFinite(l)) return null
+  h = ((h % 360) + 360) % 360
+  s = Math.min(Math.max(s, 0), 1)
+  l = Math.min(Math.max(l, 0), 1)
+
+  const c = (1 - Math.abs(2 * l - 1)) * s
+  const x = c * (1 - Math.abs(((h / 60) % 2) - 1))
+  const m = l - c / 2
+  const [r1, g1, b1] =
+    h < 60 ? [c, x, 0] :
+    h < 120 ? [x, c, 0] :
+    h < 180 ? [0, c, x] :
+    h < 240 ? [0, x, c] :
+    h < 300 ? [x, 0, c] :
+    [c, 0, x]
+  const toHex = (n: number) => Math.round((n + m) * 255).toString(16).padStart(2, '0')
+  return `#${toHex(r1)}${toHex(g1)}${toHex(b1)}`.toUpperCase()
+}
+
 const normalizeToHex = (color: string): string | null => {
   if (!color) return null
-  if (color.startsWith('#')) {
-    const hex = color.replace('#', '')
+  const trimmed = color.trim()
+  if (trimmed.startsWith('#')) {
+    const hex = trimmed.replace('#', '')
     return /^[0-9A-Fa-f]{3}$/.test(hex) || /^[0-9A-Fa-f]{6}$/.test(hex)
-      ? color.toUpperCase()
+      ? trimmed.toUpperCase()
       : null
   }
-  if (color.startsWith('rgb')) return rgbToHex(color)
-  if (/^[0-9A-Fa-f]{3}$/.test(color) || /^[0-9A-Fa-f]{6}$/.test(color)) {
-    return `#${color.toUpperCase()}`
+  if (trimmed.startsWith('rgb')) return rgbToHex(trimmed)
+  if (trimmed.startsWith('hsl')) return hslToHex(trimmed)
+  if (/^[0-9A-Fa-f]{3}$/.test(trimmed) || /^[0-9A-Fa-f]{6}$/.test(trimmed)) {
+    return `#${trimmed.toUpperCase()}`
   }
   return null
 }
@@ -849,6 +891,17 @@ const updateColorSchemeInStore = () => {
   colorSchemeStore.setCurrentScheme(generateCurrentColorScheme())
 }
 
+const initializeMapStyleState = () => {
+  applyMapLabelVisibility()
+  saveOriginalColors()
+  if (isGalleryMode.value && colorSchemeStore.currentScheme.layers.length > 0) {
+    syncLayerColorsFromScheme(colorSchemeStore.currentScheme)
+    applyColorsToMap()
+  } else {
+    updateColorSchemeInStore()
+  }
+}
+
 watch(
   () => mapInstanceRef.value,
   mapInstance => {
@@ -856,9 +909,7 @@ watch(
 
     const initMap = () => {
       setTimeout(() => {
-        hideMapboxDecorations()
-        saveOriginalColors()
-        updateColorSchemeInStore()
+        initializeMapStyleState()
       }, 500)
     }
 
@@ -875,17 +926,15 @@ watch(
   () => colorSchemeStore.currentScheme.layers.map(l => `${l.id}:${l.color}`).join('|'),
   () => {
     syncLayerColorsFromScheme(colorSchemeStore.currentScheme)
-    if (!getMap()?.isStyleLoaded()) return
     applyColorsToMap()
   },
+  { immediate: true },
 )
 
-watch(showLabelLayers, () => {
-  updateColorSchemeInStore()
-})
-
 onMounted(() => {
-  updateColorSchemeInStore()
+  if (!isGalleryMode.value) {
+    updateColorSchemeInStore()
+  }
 
   let checkCount = 0
   const checkMap = setInterval(() => {
@@ -893,9 +942,7 @@ onMounted(() => {
     const map = getMap()
     if (map?.isStyleLoaded()) {
       clearInterval(checkMap)
-      hideMapboxDecorations()
-      saveOriginalColors()
-      updateColorSchemeInStore()
+      initializeMapStyleState()
     }
     if (checkCount > 100) {
       clearInterval(checkMap)

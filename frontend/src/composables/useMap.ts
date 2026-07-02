@@ -75,21 +75,29 @@ export function useMap(
 
     // 监听 store 变化，同步到地图
     stopStoreWatch = watch(
-      [() => mapStore.center, () => mapStore.zoom],
+      [() => mapStore.center, () => mapStore.zoom, () => mapStore.viewVersion],
       ([targetCenter, targetZoom]) => {
         if (!map.value || !targetCenter || targetZoom === undefined) return
         const currentCenter = map.value.getCenter()
         const currentZoom = map.value.getZoom()
         const centerChanged =
-          currentCenter.lng !== targetCenter[0] || currentCenter.lat !== targetCenter[1]
-        const zoomChanged = currentZoom !== targetZoom
+          Math.abs(currentCenter.lng - targetCenter[0]) > 0.000001 ||
+          Math.abs(currentCenter.lat - targetCenter[1]) > 0.000001
+        const zoomChanged = Math.abs(currentZoom - targetZoom) > 0.001
         if (!centerChanged && !zoomChanged) return
         isApplyingStoreUpdate = true
-        map.value.jumpTo({
+        if (syncTimer) {
+          clearTimeout(syncTimer)
+          syncTimer = null
+        }
+        map.value.easeTo({
           center: targetCenter,
           zoom: targetZoom,
+          duration: 500,
         })
-        isApplyingStoreUpdate = false
+        setTimeout(() => {
+          isApplyingStoreUpdate = false
+        }, 550)
       }
     )
 
